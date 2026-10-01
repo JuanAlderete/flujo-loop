@@ -229,7 +229,22 @@ pruebas, porque el primero parece terminado.
 Si la persona, una revisión o un control encuentran un problema, **el rastro se actualiza**: se
 reabre lo que dejó de ser cierto, con el motivo, y se agregan las tareas nuevas.
 
-Dos cosas que no cambian:
+🔑 **Arreglá TODO en una sola pasada, releé el resultado completo, y recién entonces guardá el
+trabajo.** No arregles un hallazgo, guardes, y pares a esperar la próxima revisión.
+
+Esto no es prolijidad, es la diferencia entre dos vueltas y cinco, y está medido. En una tarea
+real: la primera revisión encontró dos defectos que importaban, y las tres siguientes encontraron
+cosas **en el texto escrito para arreglar la vuelta anterior** — cada vez una versión más chica
+del mismo error. Dos causas, las dos evitables:
+
+1. **Cada arreglo guardado por separado es un trabajo nuevo que se revisa de nuevo.** Cuatro
+   arreglos guardados sueltos son cuatro revisiones.
+2. **Un arreglo escrito rápido, bajo la presión de "arreglalo ya", es el próximo hallazgo.** El
+   que corrige va con el hallazgo en la cabeza y no vuelve a leer el párrafo entero.
+
+La revisión no estaba siendo superficial: lo superficial era el arreglo.
+
+Y dos cosas que no cambian:
 
 - **Un hallazgo no autoriza ampliar el alcance.** Si aparece algo que hay que arreglar y no era
   parte de esto, se dice y se decide — no se arregla de paso.
