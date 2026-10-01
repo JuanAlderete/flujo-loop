@@ -21,13 +21,25 @@ pasan **por la razón equivocada**. Un verde falso se ve exactamente igual que u
 
 ## Instalación
 
-Se hace una vez por computadora. Cloná este repo y corré:
+Se hace **una vez por computadora**.
+
+### La forma más corta: pedíselo a Claude
+
+Abrí Claude Code en cualquier carpeta y pegale esto:
+
+> Cloná https://github.com/JuanAlderete/flujo-loop e instalalo siguiendo su README.
+
+No hace falta terminal ni saber dónde va nada: lo hace él y te dice qué quedó.
+
+### O a mano, si preferís
+
+Cloná el repo y corré:
 
 ```bash
 node instalar.mjs
 ```
 
-Si querés ver qué va a hacer antes de que lo haga:
+Y si querés ver qué va a hacer antes de que lo haga:
 
 ```bash
 node instalar.mjs --simular
