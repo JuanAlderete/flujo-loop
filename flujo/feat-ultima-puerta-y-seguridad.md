@@ -94,9 +94,10 @@ comparación.
   archivos queden donde van; el registro lo hace la herramienta al arrancar.
 - **Que el agente efectivamente cargue `owasp-top-10` en la última puerta.** El paso está escrito
   y es obligatorio, pero que un agente lo cumpla se ve en el rastro de la próxima tarea, no acá.
-- **El checkout en otra máquina con `core.autocrlf`.** El `.gitattributes` está para eso, y en
-  este clon se verificó que los archivos quedan con fin de línea de Unix — pero no se probó un
-  clon nuevo en otra computadora.
+- **El checkout en OTRA computadora.** En esta se verificó con un clon nuevo y
+  `core.autocrlf=true`: las skills propias salieron con fines de línea de Windows, la copia
+  conservó los de Unix, y el instalador copió las cinco. En otra máquina y otro sistema
+  operativo, no está medido.
 
 ## Estado
 
