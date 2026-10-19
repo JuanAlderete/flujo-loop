@@ -152,11 +152,28 @@ Lo que cambia en cómo trabajás:
 
 Antes de presentar, además de los controles:
 
-1. **La revisión de seguridad del cambio.** Cargá la skill `owasp-top-10` con tu herramienta de
-   skills (no tiene comando con barra: es una base de consulta) y revisá el cambio **entero**
-   contra sus diez categorías. Sumale las reglas de seguridad que declare el proyecto: las suyas
-   ganan, porque saben cosas que una lista general no sabe. Si tocás acceso, permisos,
+1. **La revisión de seguridad del cambio.** Ejecutá **`/sentry-security-review`** sobre el cambio
+   entero: es el procedimiento — seguir el dato desde donde entra antes de acusar, y reportar lo
+   que se confirmó, no lo que se parece a un patrón. Y cargá la skill `owasp-top-10` con tu
+   herramienta de skills (no tiene comando con barra: es una base de consulta) para revisar el
+   cambio contra sus diez categorías. Sumale las reglas de seguridad que declare el proyecto: las
+   suyas ganan, porque saben cosas que una lista general no sabe. Si tocás acceso, permisos,
    credenciales o plata, esta revisión va **también al empezar**, no sólo al final.
+
+   ⚠️ **Tres reglas de ese procedimiento no valen acá, y ganan estas.** Las tres tienen el mismo
+   origen: en una app donde conviven varias empresas o varios usuarios con datos propios, **el
+   atacante más probable YA está autenticado** — es alguien de otra empresa intentando ver o
+   tocar lo que no es suyo.
+
+   - Dice que no se reporte lo que sólo se alcanza estando autenticado. **Se reporta siempre.**
+   - Dice que buscar un registro por su identificador es seguro. **Es seguro contra inyección,
+     no contra acceso ajeno.** Una búsqueda por identificador que no se limita a la empresa o al
+     usuario actual —o que confía en que otra capa lo limita sin verificarlo— se reporta. Y una
+     regla de acceso de la base que deja pasar todo, o que está apagada porque "lo chequea la
+     app", también: no es configuración, es el control.
+   - Dice que los datos firmados de la sesión son confiables. **Firmado no es lo mismo que no
+     editable**: si el usuario puede escribir ese dato (su perfil, sus preferencias), una empresa
+     o un rol leídos de ahí los controla el atacante.
 2. **Si sumaste, copiaste o actualizaste una skill: `/seguridad-de-skills`.** Una skill es
    comportamiento, no documentación, y la de afuera entra sin que nadie la lea si no se frena acá.
 

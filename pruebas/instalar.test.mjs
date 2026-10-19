@@ -124,6 +124,7 @@ caso('configuración limpia: copia las skills y escribe los dos enganches', () =
 
   const todas = [
     'flujo-loop', 'grilling', 'test-driven-development', 'owasp-top-10', 'seguridad-de-skills',
+    'sentry-security-review',
   ];
   for (const s of todas) {
     afirmar(existsSync(join(d, 'skills', s, 'SKILL.md')), `no copió ${s}`);

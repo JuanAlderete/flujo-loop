@@ -340,12 +340,25 @@ function verificar() {
     //  Un nombre pelado, sin barra, puede estar nombrado dentro de la descripción de una
     //  subcarpeta ("`references/` — ... `00-indice.md`"): se busca en toda la skill. Una ruta
     //  con barra se sigue exigiendo exacta.
+    //
+    //  Una skill copiada de afuera puede nombrar archivos que tampoco existen en su fuente: no
+    //  se arreglan tocando la copia. Se declaran en su ORIGEN.json (`faltan_en_origen`) y se
+    //  aceptan ESOS, ni uno más: un faltante nuevo sigue fallando, y uno declarado que aparece
+    //  también, para que la lista no quede vieja.
     const todos = archivosDeSkill(join(RAIZ, c));
+    const rutaOrigen = join(RAIZ, c, 'ORIGEN.json');
+    const declarados = existsSync(rutaOrigen)
+      ? JSON.parse(readFileSync(rutaOrigen, 'utf8')).faltan_en_origen ?? []
+      : [];
+    const esDeclarado = (rel) => declarados.some((d) => d === rel || d.endsWith(`/${rel}`));
     for (const rel of archivosNombrados(c)) {
       const existe = rel.includes('/')
         ? existsSync(join(RAIZ, c, rel))
         : todos.some((f) => f === rel || f.endsWith(`/${rel}`));
-      ok(existe, `${c}: nombra "${rel}" y no existe`);
+      ok(existe || esDeclarado(rel), `${c}: nombra "${rel}" y no existe`);
+    }
+    for (const d of declarados) {
+      ok(!existsSync(join(RAIZ, c, d)), `${c}: declara que falta "${d}" pero existe: sacalo de faltan_en_origen`);
     }
   }
 

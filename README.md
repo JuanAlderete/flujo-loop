@@ -54,6 +54,7 @@ los dos enganches en tu archivo de configuración **conservando lo que ya tuvier
 | `grilling` | se ejecuta antes de empezar: pregunta lo que no se te ocurre |
 | `test-driven-development` | se ejecuta al empezar a implementar |
 | `owasp-top-10` | base de consulta del **OWASP Top 10:2025** para revisar el código de la app antes de presentarlo. Copia fija de [microsoft/hve-core](https://github.com/microsoft/hve-core) |
+| `sentry-security-review` | el **procedimiento** de la revisión de seguridad: seguir el dato antes de acusar, reportar sólo lo confirmado. Copia fija de [getsentry/skills](https://github.com/getsentry/skills), con **una** línea cambiada: el nombre, porque el original (`security-review`) reemplaza en silencio al `/security-review` que trae Claude Code. El cambio está registrado y es verificable en su `ORIGEN.json` |
 | `seguridad-de-skills` | qué revisar antes de sumar, actualizar o escribir una skill, según el **OWASP Agentic Skills Top 10** |
 
 > 🔑 **Las skills copiadas de otro repo se instalan sólo si siguen idénticas a su fuente.** Cada

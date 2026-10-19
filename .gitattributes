@@ -2,3 +2,4 @@
 # cada archivo tal como está en su fuente, y una conversión de fin de línea (core.autocrlf en
 # Windows) lo rompería. Sin esto, el instalador se negaría a instalar en Windows.
 skills/owasp-top-10/** -text
+skills/sentry-security-review/** -text

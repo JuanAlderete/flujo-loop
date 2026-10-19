@@ -36,6 +36,28 @@
 | licencia | contenido CC BY-SA 4.0 de OWASP, atribución en su `SKILL.md`; repo MIT |
 | veredicto | se instala como base de consulta |
 
+## Revisión de `sentry-security-review` (`/seguridad-de-skills`)
+
+`owasp-top-10` dice **contra qué** revisar; le faltaba **cómo**. La de Sentry es el
+procedimiento: seguir el dato desde donde entra y reportar sólo lo confirmado.
+
+| chequeo | resultado |
+|---|---|
+| fuente y commit | `getsentry/skills`, `skills/security-review`, commit `3482d8dd35315adf34607f1c12bf793e14890bfe` |
+| byte a byte | 22 archivos comparados contra el blob de ese commit: 22 idénticos, 0 distintos |
+| qué se leyó | los 22 enteros, por un revisor aparte que los trató como datos |
+| instrucciones de actuar | ninguna en el `SKILL.md`. Las referencias traen comandos de ejemplo (`npm ci`, `pip install`, escaneos) como documentación |
+| contenido escondido | un comentario oculto, inofensivo: la atribución a OWASP. Dos letras cirílicas, que son el ejemplo de un ataque por homoglifos |
+| privilegios | pedía `Bash` y `Task` sin usarlos nunca → **modificado a `Read Grep Glob`** |
+| nombre | `security-review` reemplaza en silencio al comando que trae Claude Code (docs oficiales: *"Your skill replaces the bundled command"*) → **modificado a `sentry-security-review`** |
+| archivos que nombra y no tiene | 7 guías (Go, Rust, Java, Kubernetes, Terraform, CI/CD, cloud) que **tampoco existen en su fuente**. Declaradas en `faltan_en_origen` |
+| licencia | Apache-2.0; referencias derivadas del OWASP Cheat Sheet Series, CC BY-SA 4.0 |
+| reglas peligrosas para una app multi-empresa | tres: no reportar lo que exige estar autenticado, dar por segura una búsqueda por ID sin limitar por empresa, y confiar en datos firmados de la sesión. **El paso 5 de `flujo-loop` las contradice y gana** |
+| veredicto | se instala, con las dos modificaciones y la corrección del paso 5 |
+
+Las dos modificaciones van en su `ORIGEN.json` con el hash del original: deshaciendo esas dos
+líneas, el archivo da exactamente ese hash. Verificado.
+
 ## Las tres pruebas
 
 ### 1 · El fallo observado, textual
@@ -69,6 +91,8 @@ comparación.
 | el instalador deja de comparar hashes | sólo "una skill de afuera modificada" |
 | el instalador no corta cuando hay diferencias | exactamente los dos casos de skill alterada |
 | el guard busca un nombre sin ruta sólo en la raíz | sólo el chequeo de `00-vulnerability-index.md` |
+| se saca un archivo de `faltan_en_origen` | sólo los dos chequeos de ese archivo (con ruta y sin ruta) |
+| aparece un archivo que estaba declarado como faltante | sólo "declara que falta ... pero existe" |
 
 ⚠️ **Dos cosas que pasaron y quedan anotadas:**
 
@@ -83,7 +107,7 @@ comparación.
 
 | control | resultado |
 |---|---|
-| `pruebas/check.mjs` | 52 chequeos, sin fallas |
+| `pruebas/check.mjs` | 103 chequeos, sin fallas (52 antes de sumar la de Sentry) |
 | `pruebas/check.mjs --self-test` | 35 casos, sin fallas |
 | `pruebas/hook.test.mjs` | 18 casos, sin fallas |
 | `pruebas/instalar.test.mjs` | 11 casos, sin fallas |
