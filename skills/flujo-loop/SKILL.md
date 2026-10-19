@@ -132,6 +132,37 @@ corrieron.** Si el que se cortó era ajeno a tu cambio, corré a mano los que qu
 reporte que dice "los controles fallaron" cuando en realidad **cuatro de seis nunca se
 ejecutaron** es un reporte falso, aunque suene pesimista.
 
+## Paso 5 · La última puerta: se presenta una sola vez, terminado
+
+El cambio se presenta para revisión **una sola vez, cuando está terminado y listo para salir**.
+No en el medio: resolver un punto, presentarlo, y seguir con el siguiente.
+
+Por qué no es una preferencia: cada presentación dispara los controles que corren en el servidor,
+y esos **se pagan** y **se acaban**. Cuando se acaban, no corre ninguno hasta que se renuevan —
+y lo que se presente mientras tanto pasa sin compuerta. Ya pasó: se agotaron en días, por
+presentar de a pedacitos.
+
+Lo que cambia en cómo trabajás:
+
+- **Mientras tanto, guardás y probás en local.** Las unidades de trabajo se guardan chicas y
+  revisables cada una por su cuenta; el tamaño se cuida **por unidad**, no por presentación. Una
+  presentación con una tarea entera es grande, y eso es lo esperado.
+- **Los controles corren en tu máquina antes de presentar**, en el entorno que el proyecto
+  declara. Si el proyecto deja una constancia de que corrieron, la dejás.
+
+Antes de presentar, además de los controles:
+
+1. **La revisión de seguridad del cambio.** Cargá la skill `owasp-top-10` con tu herramienta de
+   skills (no tiene comando con barra: es una base de consulta) y revisá el cambio **entero**
+   contra sus diez categorías. Sumale las reglas de seguridad que declare el proyecto: las suyas
+   ganan, porque saben cosas que una lista general no sabe. Si tocás acceso, permisos,
+   credenciales o plata, esta revisión va **también al empezar**, no sólo al final.
+2. **Si sumaste, copiaste o actualizaste una skill: `/seguridad-de-skills`.** Una skill es
+   comportamiento, no documentación, y la de afuera entra sin que nadie la lea si no se frena acá.
+
+Al rastro va qué categorías revisaste y **qué encontraste en cada una, aunque sea nada**. "Se
+revisó la seguridad" sin el detalle es un tilde, no una prueba.
+
 ---
 
 ## Las tres pruebas

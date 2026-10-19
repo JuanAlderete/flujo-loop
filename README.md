@@ -45,8 +45,23 @@ Y si querés ver qué va a hacer antes de que lo haga:
 node instalar.mjs --simular
 ```
 
-El instalador hace dos cosas: copia las tres skills a tu configuración de Claude Code, y escribe
+El instalador hace dos cosas: copia las skills a tu configuración de Claude Code, y escribe
 los dos enganches en tu archivo de configuración **conservando lo que ya tuvieras ahí**.
+
+| skill | qué es |
+|---|---|
+| `flujo-loop` | el procedimiento: en qué orden se hacen las cosas y qué prueba queda |
+| `grilling` | se ejecuta antes de empezar: pregunta lo que no se te ocurre |
+| `test-driven-development` | se ejecuta al empezar a implementar |
+| `owasp-top-10` | base de consulta del **OWASP Top 10:2025** para revisar el código de la app antes de presentarlo. Copia fija de [microsoft/hve-core](https://github.com/microsoft/hve-core) |
+| `seguridad-de-skills` | qué revisar antes de sumar, actualizar o escribir una skill, según el **OWASP Agentic Skills Top 10** |
+
+> 🔑 **Las skills copiadas de otro repo se instalan sólo si siguen idénticas a su fuente.** Cada
+> una trae un `ORIGEN.json` con el commit exacto y el hash de cada archivo. Si algo no coincide,
+> o aparece un archivo que la fuente no tiene, el instalador **no instala nada** y te dice qué
+> cambió. Una skill es comportamiento, no documentación: lo que dice, el agente lo hace con tus
+> credenciales. Para actualizarla se lee el diff entero contra el commit nuevo y recién ahí se
+> regenera su `ORIGEN.json` — ver `seguridad-de-skills`.
 
 > ⚠️ **Por qué esto es un script y no "copiá esta carpeta y pegá este texto".** Lo primero —copiar
 > carpetas— se podría hacer a mano sin problema. Lo segundo no: el archivo de configuración es
@@ -91,6 +106,11 @@ objetivo, las decisiones **con su por qué**, y las tres pruebas:
    re-verificar.
 
 Más **lo que no se pudo verificar**, que es obligatorio y es lo primero que busca el que audita.
+
+Y **una sola presentación por tarea, con la tarea terminada**: no se presenta un cambio a medias
+por cada punto resuelto. Cada presentación dispara los controles que corren en el servidor, que
+se pagan y se acaban — y se agotaron en días por presentar de a pedacitos. Antes de presentar
+corren, en local, los controles del proyecto y la revisión de seguridad contra el OWASP Top 10.
 
 ## Qué NO hace
 

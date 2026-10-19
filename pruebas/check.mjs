@@ -128,15 +128,38 @@ function frontmatter(carpeta) {
   return t.slice(4, fin);
 }
 
-/** Los campos de una línea del frontmatter: [{clave, valor}]. */
+/**
+ * Los campos de un frontmatter: [{clave, valor}]. Una clave sin valor con líneas sangradas
+ * debajo es un mapa: no se valida ella, se validan sus campos (`metadata.autor`). Una clave sin
+ * valor y sin nada debajo queda con valor vacío, que es inválido.
+ */
+export function camposDe(texto) {
+  const lineas = texto.split('\n');
+  const hallados = [];
+  lineas.forEach((l, i) => {
+    if (!/^[A-Za-z0-9_-]+:/.test(l)) return;
+    const j = l.indexOf(':');
+    const clave = l.slice(0, j);
+    const valor = l.slice(j + 1);
+    const debajo = [];
+    for (const s of lineas.slice(i + 1)) {
+      if (!/^\s+\S/.test(s)) break;
+      debajo.push(s);
+    }
+    if (valor.trim() !== '' || !/^\s+[A-Za-z0-9_-]+:/.test(debajo[0] ?? '')) {
+      hallados.push({ clave, valor });
+      return;
+    }
+    for (const s of debajo) {
+      const m = s.match(/^\s+([A-Za-z0-9_-]+):(.*)$/);
+      if (m) hallados.push({ clave: `${clave}.${m[1]}`, valor: m[2] });
+    }
+  });
+  return hallados;
+}
+
 function campos(carpeta) {
-  return frontmatter(carpeta)
-    .split('\n')
-    .filter((l) => /^[A-Za-z0-9_-]+:/.test(l))
-    .map((l) => {
-      const i = l.indexOf(':');
-      return { clave: l.slice(0, i), valor: l.slice(i + 1) };
-    });
+  return camposDe(frontmatter(carpeta));
 }
 
 function valorDe(carpeta, clave) {
@@ -171,6 +194,16 @@ function cuerpoDeBloque(carpeta, clave) {
  * reintrodujo al portar el código acá.
  */
 const DEL_PROYECTO_DEL_LECTOR = ['CLAUDE.md', 'AGENTS.md', 'README.md', 'DESIGN.md'];
+
+/** Todos los archivos de una skill, como rutas relativas con barra normal. */
+function archivosDeSkill(carpeta, base = carpeta) {
+  return readdirSync(carpeta).flatMap((n) => {
+    const p = join(carpeta, n);
+    return statSync(p).isDirectory()
+      ? archivosDeSkill(p, base)
+      : [p.slice(base.length + 1).replace(/\\/g, '/')];
+  });
+}
 
 /** Los archivos que el cuerpo de la skill nombra con una ruta relativa. */
 function archivosNombrados(carpeta) {
@@ -229,9 +262,25 @@ const DESACOPLADO = [
   'Van las tres pruebas: el fallo textual, la mutación y los números.',
 ];
 
+/**
+ * Frontmatters enteros, para lo que un valor suelto no alcanza a decidir: una clave sin valor
+ * es válida si debajo tiene un mapa (`metadata:` con sus campos sangrados), e inválida si no.
+ * Lo trajo la primera skill copiada de afuera: su `metadata:` es YAML válido y daba rojo.
+ */
+const FRONTMATTER_ENTERO = [
+  ['mapa anidado válido', 'name: x\nmetadata:\n  autor: "alguien"\n  version: "1.0"', 0],
+  ['clave sin valor y sin nada debajo', 'name: x\nmetadata:\nlicense: y', 1],
+  ['campo anidado mal escrito', 'name: x\nmetadata:\n  autor: uno: dos', 1],
+];
+
 function autoTest() {
   const fallas = [];
   const ok = (cond, msg) => { if (!cond) fallas.push(msg); };
+
+  for (const [nombre, texto, invalidos] of FRONTMATTER_ENTERO) {
+    const n = camposDe(texto).filter((c) => motivoInvalido(c.valor) !== null).length;
+    ok(n === invalidos, `frontmatter entero "${nombre}": esperaba ${invalidos} inválidos y dio ${n}`);
+  }
 
   for (const [nombre, valor] of FRONTMATTER_INVALIDO) {
     ok(motivoInvalido(valor) !== null, `debía rechazar frontmatter: ${nombre}`);
@@ -249,7 +298,8 @@ function autoTest() {
   }
 
   const total =
-    FRONTMATTER_INVALIDO.length + FRONTMATTER_VALIDO.length + ACOPLADO.length + DESACOPLADO.length;
+    FRONTMATTER_INVALIDO.length + FRONTMATTER_VALIDO.length + ACOPLADO.length + DESACOPLADO.length +
+    FRONTMATTER_ENTERO.length;
   return { fallas, total };
 }
 
@@ -287,8 +337,15 @@ function verificar() {
       : desc.replace(/^["']|["']$/g, '').trim();
     ok(contenido.length > 0, `${c}: la description está vacía`);
 
+    //  Un nombre pelado, sin barra, puede estar nombrado dentro de la descripción de una
+    //  subcarpeta ("`references/` — ... `00-indice.md`"): se busca en toda la skill. Una ruta
+    //  con barra se sigue exigiendo exacta.
+    const todos = archivosDeSkill(join(RAIZ, c));
     for (const rel of archivosNombrados(c)) {
-      ok(existsSync(join(RAIZ, c, rel)), `${c}: nombra "${rel}" y no existe`);
+      const existe = rel.includes('/')
+        ? existsSync(join(RAIZ, c, rel))
+        : todos.some((f) => f === rel || f.endsWith(`/${rel}`));
+      ok(existe, `${c}: nombra "${rel}" y no existe`);
     }
   }
 
