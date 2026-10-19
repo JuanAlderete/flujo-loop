@@ -55,6 +55,9 @@ los dos enganches en tu archivo de configuración **conservando lo que ya tuvier
 | `test-driven-development` | se ejecuta al empezar a implementar |
 | `owasp-top-10` | base de consulta del **OWASP Top 10:2025** para revisar el código de la app antes de presentarlo. Copia fija de [microsoft/hve-core](https://github.com/microsoft/hve-core) |
 | `sentry-security-review` | el **procedimiento** de la revisión de seguridad: seguir el dato antes de acusar, reportar sólo lo confirmado. Copia fija de [getsentry/skills](https://github.com/getsentry/skills), con **una** línea cambiada: el nombre, porque el original (`security-review`) reemplaza en silencio al `/security-review` que trae Claude Code. El cambio está registrado y es verificable en su `ORIGEN.json` |
+| `gha-security-review` | revisa los workflows de CI buscando cómo explotarlos. Copia fija de getsentry/skills, con `allowed-tools` recortado. ⚠️ Da por seguro `${{ }}` dentro de `with:`, y en `actions/github-script` `script:` eso es inyección: ver su `ORIGEN.json` |
+| `secret-serialization` | busca secretos que se filtran al serializar (logs, `JSON.stringify`, `repr`). Copia fija de getsentry/skills, sin cambios |
+| `skill-scanner` | escanea una skill de afuera. Copia fija de getsentry/skills, con `allowed-tools` recortado: su script se corre pasando por el pedido de permiso. **Su salida son pistas, no un aprobado** |
 | `seguridad-de-skills` | qué revisar antes de sumar, actualizar o escribir una skill, según el **OWASP Agentic Skills Top 10** |
 
 > 🔑 **Las skills copiadas de otro repo se instalan sólo si siguen idénticas a su fuente.** Cada

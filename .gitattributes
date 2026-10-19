@@ -3,3 +3,6 @@
 # Windows) lo rompería. Sin esto, el instalador se negaría a instalar en Windows.
 skills/owasp-top-10/** -text
 skills/sentry-security-review/** -text
+skills/gha-security-review/** -text
+skills/secret-serialization/** -text
+skills/skill-scanner/** -text

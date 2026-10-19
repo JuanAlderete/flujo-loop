@@ -193,7 +193,7 @@ function cuerpoDeBloque(carpeta, clave) {
  * carpeta de la skill y daba por faltantes los documentos de la raíz. Se arregló allá y se
  * reintrodujo al portar el código acá.
  */
-const DEL_PROYECTO_DEL_LECTOR = ['CLAUDE.md', 'AGENTS.md', 'README.md', 'DESIGN.md'];
+const DEL_PROYECTO_DEL_LECTOR = ['CLAUDE.md', 'AGENTS.md', 'README.md', 'DESIGN.md', 'MEMORY.md'];
 
 /** Todos los archivos de una skill, como rutas relativas con barra normal. */
 function archivosDeSkill(carpeta, base = carpeta) {

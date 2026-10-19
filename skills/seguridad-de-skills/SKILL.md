@@ -47,6 +47,17 @@ nadie puede comparar lo que tenés contra lo que había.
 Qué herramientas habilita, qué enganches instala y qué permisos pide. **Un enganche corre
 código en cada evento**: es lo que más se revisa. Si la tarea no lo justifica, no va.
 
+🔑 **La regla para una copia de afuera: su lista de herramientas pre-aprobadas queda en lo
+mínimo que de verdad usa.** Esa lista le da las herramientas **sin pedirte permiso** mientras
+está activa. Si pide de más, se recorta, y el cambio se registra en su `ORIGEN.json` con el
+hash del original, para que se pueda deshacer y comprobar. Si alguna vez necesita más —correr
+un script, por ejemplo—, **no se le pre-aprueba**: el agente lo corre igual, pero pasando por
+el pedido de permiso normal, que es lo que corresponde para algo que ejecuta código.
+
+Y un detalle que no se ve a simple vista: un signo de exclamación seguido de un comando entre
+acentos graves, al principio de una línea o después de un espacio, **se ejecuta al cargar la
+skill**, antes de que el agente la lea. Se busca a propósito.
+
 ### 4 · ¿Su encabezado es válido y acotado? (AST04 · metadata insegura)
 
 El encabezado tiene que parsear, el nombre coincidir con la carpeta, y la descripción decir

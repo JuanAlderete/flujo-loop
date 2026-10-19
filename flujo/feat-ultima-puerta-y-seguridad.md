@@ -58,6 +58,25 @@ procedimiento: seguir el dato desde donde entra y reportar sólo lo confirmado.
 Las dos modificaciones van en su `ORIGEN.json` con el hash del original: deshaciendo esas dos
 líneas, el archivo da exactamente ese hash. Verificado.
 
+## Revisión de `gha-security-review`, `secret-serialization` y `skill-scanner`
+
+Las tres de `getsentry/skills`, cada una fijada al último commit de su carpeta; 20 archivos
+comparados contra su blob: 20 idénticos. Leídas enteras por un revisor aparte, sin correr nada.
+
+| skill | commit | hallazgos | qué se hizo |
+|---|---|---|---|
+| `gha-security-review` | `b11ee516` | pide `Bash` y `Task`, no los usa. Falso negativo: `${{ }}` en `with:` "seguro", que en `github-script` `script:` es inyección | `allowed-tools` → `Read Grep Glob`; el falso negativo, en `advertencias` |
+| `secret-serialization` | `473d2594` | ninguno; pide sólo `Read Grep Glob` | se copia sin cambios |
+| `skill-scanner` | `d18b7aa8` | pide `Bash` para `uv run`, que baja `pyyaml` de PyPI. El script: sin red, sin `exec`, sin escrituras; sigue enlaces e imprime secretos sin enmascarar; no mira `references/` y confía en `github.com` | `allowed-tools` → `Read Grep Glob`; lo demás, en `advertencias` |
+
+Un `` !`command` `` en `skill-scanner/SKILL.md:109` parecía ejecutarse al cargar la skill. **No
+se ejecuta**: la regla oficial es que sólo corre si el `!` va al principio de la línea o después
+de un espacio, y acá va después de un acento grave.
+
+🔑 **Regla general que salió de acá**, escrita en `seguridad-de-skills`: la lista de
+herramientas pre-aprobadas de una copia de afuera queda en lo mínimo que de verdad usa, con el
+cambio registrado. Lo que necesite más, pasa por el pedido de permiso normal.
+
 ## Las tres pruebas
 
 ### 1 · El fallo observado, textual
@@ -107,7 +126,7 @@ comparación.
 
 | control | resultado |
 |---|---|
-| `pruebas/check.mjs` | 103 chequeos, sin fallas (52 antes de sumar la de Sentry) |
+| `pruebas/check.mjs` | 136 chequeos, sin fallas (52 con la primera copia, 103 con la de Sentry) |
 | `pruebas/check.mjs --self-test` | 35 casos, sin fallas |
 | `pruebas/hook.test.mjs` | 18 casos, sin fallas |
 | `pruebas/instalar.test.mjs` | 11 casos, sin fallas |
