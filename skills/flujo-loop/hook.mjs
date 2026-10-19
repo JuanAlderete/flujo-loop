@@ -2,11 +2,13 @@
 /**
  * EL HOOK DE `flujo-loop`.
  *
- * Dos trabajos, y nada más:
+ * Tres trabajos, y nada más:
  *
  *   `UserPromptSubmit` → mete el procedimiento en contexto. Así no depende de que alguien se
  *                        acuerde de invocar la skill, que es el mecanismo que ya falló.
  *   `Stop`             → no deja declarar "listo" si hay trabajo sin rastro.
+ *   `PreToolUse`       → el guardrail: frena los comandos de git que borran trabajo sin vuelta
+ *                        atrás, o que lo publican. Ver más abajo.
  *
  * Actúa **sólo** en repos con el marcador `.flujo-loop` en la raíz. En cualquier otro proyecto no
  * hace absolutamente nada.
@@ -106,16 +108,114 @@ Antes de cambiar nada, invocá la skill \`flujo-loop\` y seguí su orden. En res
 La persona que pide esto probablemente no lee código, y otra persona audita después: la prueba
 de que algo funciona tiene que quedar ESCRITA, no demostrada en la conversación.`;
 
+// ── El guardrail de git (PreToolUse) ──────────────────────────────────────────
+//
+//  Frena los comandos de git que borran trabajo sin vuelta atrás, o que lo publican, antes de
+//  que corran. La persona que trabaja con esto probablemente no lee código: un `reset --hard`
+//  le borra lo que hizo y no se entera de que existía.
+//
+//  🔑 Decide por el SUBCOMANDO real, no buscando palabras en el texto. "git push" adentro de un
+//  mensaje de commit, de un `echo` o de un `--grep` no es un push — y un guardrail que bloquea
+//  eso se vuelve ruido, y el ruido se desinstala. Por eso parte el comando en tramos, respeta
+//  las comillas, y después de `git` saltea las opciones globales hasta llegar al subcomando.
+//
+//  ⚠️ No es un sandbox: un comando disfrazado lo esquiva. Es una red contra el error, no contra
+//  alguien que quiere romper algo a propósito.
+
+const HERRAMIENTAS_DE_COMANDOS = new Set(['Bash', 'PowerShell']);
+
+/** Parte un comando en tramos (`;`, `&&`, `||`, `|`, salto de línea) y cada tramo en palabras. */
+function tramos(comando) {
+  const salida = [];
+  let palabras = [];
+  let palabra = '';
+  let enPalabra = false;
+  let comilla = null;
+  const cerrarPalabra = () => {
+    if (enPalabra) palabras.push(palabra);
+    palabra = '';
+    enPalabra = false;
+  };
+  const cerrarTramo = () => {
+    cerrarPalabra();
+    if (palabras.length) salida.push(palabras);
+    palabras = [];
+  };
+  for (let i = 0; i < comando.length; i++) {
+    const c = comando[i];
+    if (comilla) {
+      if (c === comilla) comilla = null;
+      else palabra += c;
+      continue;
+    }
+    if (c === '"' || c === "'") { comilla = c; enPalabra = true; continue; }
+    if (c === ';' || c === '|' || c === '&' || c === '\n') { cerrarTramo(); continue; }
+    if (/\s/.test(c)) { cerrarPalabra(); continue; }
+    palabra += c;
+    enPalabra = true;
+  }
+  cerrarTramo();
+  return salida;
+}
+
+/** Opciones globales de git que se comen la palabra siguiente. */
+const OPCION_CON_VALOR = new Set(['-C', '-c', '--git-dir', '--work-tree', '--namespace']);
+
+/** Si el tramo es un comando destructivo de git, el motivo; si no, null. */
+function peligro(palabras) {
+  const i = palabras.findIndex((p) => /(^|[\\/])git(\.exe)?$/i.test(p));
+  if (i < 0) return null;
+  let j = i + 1;
+  while (j < palabras.length && palabras[j].startsWith('-')) {
+    j += OPCION_CON_VALOR.has(palabras[j]) ? 2 : 1;
+  }
+  const sub = palabras[j];
+  const args = palabras.slice(j + 1);
+  const tiene = (...xs) => args.some((a) => xs.includes(a));
+
+  if (sub === 'push') return 'publica el trabajo';
+  if (sub === 'reset' && tiene('--hard')) return 'borra los cambios sin guardar';
+  if (sub === 'clean' && args.some((a) => /^-[^-]*f/.test(a) || a === '--force')) {
+    return 'borra los archivos que todavía no se guardaron nunca';
+  }
+  if (sub === 'branch' && (tiene('-D') || (tiene('-d', '--delete') && tiene('-f', '--force')))) {
+    return 'borra una rama aunque tenga trabajo sin integrar';
+  }
+  if ((sub === 'checkout' || sub === 'restore') && args.filter((a) => a !== '--').includes('.')) {
+    return 'descarta todos los cambios sin guardar';
+  }
+  return null;
+}
+
+function guardrail(entrada) {
+  if (!HERRAMIENTAS_DE_COMANDOS.has(entrada.tool_name)) return callarse();
+  const comando = String(entrada.tool_input?.command ?? '');
+  for (const palabras of tramos(comando)) {
+    const motivo = peligro(palabras);
+    if (!motivo) continue;
+    process.stderr.write(
+      `Bloqueado por flujo-loop: "${palabras.join(' ')}" ${motivo}, y eso no tiene vuelta atrás.\n\n` +
+        `Si de verdad hace falta, explicale a la persona qué hace y que lo corra ella. Para ` +
+        `presentar el trabajo, usá lo que declara el proyecto: nunca un push suelto.\n`,
+    );
+    process.exit(2);
+  }
+  return callarse();
+}
+
 async function main() {
-  let evento = '';
+  let entrada = {};
   try {
-    evento = JSON.parse(await leerEntrada())?.hook_event_name ?? '';
+    entrada = JSON.parse(await leerEntrada()) ?? {};
   } catch {
     return callarse(); // entrada mal formada: no es asunto del hook arreglarla
   }
+  const evento = entrada.hook_event_name ?? '';
 
   const raiz = process.env.CLAUDE_PROJECT_DIR || process.cwd();
   if (!existsSync(join(raiz, MARCADOR))) return callarse();
+
+  if (evento === 'PreToolUse') return guardrail(entrada);
 
   if (evento === 'UserPromptSubmit') {
     process.stdout.write(

@@ -44,7 +44,16 @@ const DESTINO = process.env.FLUJO_LOOP_DESTINO || join(homedir(), '.claude');
 const SIMULAR = process.argv.includes('--simular') || process.argv.includes('--dry-run');
 
 const HOOK_INSTALADO = join(DESTINO, 'skills', 'flujo-loop', 'hook.mjs');
-const EVENTOS = ['UserPromptSubmit', 'Stop'];
+/**
+ * Los eventos donde engancha el hook. El de PreToolUse es el guardrail de git, y mira las dos
+ * herramientas de comandos: en Windows, un guardrail sólo para Bash deja pasar el mismo
+ * `reset --hard` por PowerShell.
+ */
+const EVENTOS = [
+  { evento: 'UserPromptSubmit' },
+  { evento: 'Stop' },
+  { evento: 'PreToolUse', matcher: 'Bash|PowerShell' },
+];
 
 /** Marca por la que se reconoce nuestro enganche, para no duplicarlo ni pisar otros. */
 const MARCA = 'flujo-loop';
@@ -151,7 +160,7 @@ if (existsSync(rutaAjustes)) {
 
 ajustes.hooks ??= {};
 
-for (const evento of EVENTOS) {
+for (const { evento, matcher } of EVENTOS) {
   const grupos = Array.isArray(ajustes.hooks[evento]) ? ajustes.hooks[evento] : [];
 
   //  Se saca cualquier enganche nuestro anterior y se vuelve a poner uno solo. Así correr el
@@ -164,6 +173,7 @@ for (const evento of EVENTOS) {
     .filter((g) => (g.hooks ?? []).length > 0);
 
   limpios.push({
+    ...(matcher ? { matcher } : {}),
     hooks: [{ type: 'command', command: `node "${HOOK_INSTALADO.replace(/\\/g, '/')}"` }],
   });
 

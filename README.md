@@ -97,6 +97,15 @@ en la lista. Si no aparece, revisá que la carpeta se llame exactamente así y q
 |---|---|
 | en cada mensaje tuyo | mete el procedimiento en contexto, así el agente lo tiene sin que nadie lo invoque |
 | cuando el agente va a decir "listo" | no lo deja si hay trabajo sin su archivo de rastro |
+| antes de que el agente corra un comando | frena los de git que **borran trabajo sin vuelta atrás o lo publican**: `push`, `reset --hard`, `clean -f`, `branch -D`, `checkout .`, `restore .`. Por Bash y por PowerShell. Decide por el subcomando real: un mensaje de commit que dice "push" no se bloquea |
+
+> ⚠️ **El guardrail no es un sandbox.** Un comando disfrazado lo esquiva. Es una red contra el
+> error —el `reset --hard` que borra lo que alguien hizo sin que sepa que existía—, no contra
+> alguien que quiere romper algo a propósito. Si de verdad hace falta uno de esos comandos, lo
+> corre la persona, sabiendo qué hace.
+
+Y si un mensaje del agente no se entiende: **`/no-entendi`**. Le pide que lo vuelva a explicar
+más simple, con el contexto que falta y diciendo qué cambia en la app, no en el código.
 
 El archivo de rastro se llama **`flujo/<nombre-de-la-rama>.md`** y va commiteado. Ahí viven el
 objetivo, las decisiones **con su por qué**, y las tres pruebas:

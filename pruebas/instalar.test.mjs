@@ -125,6 +125,7 @@ caso('configuración limpia: copia las skills y escribe los dos enganches', () =
   const todas = [
     'flujo-loop', 'grilling', 'test-driven-development', 'owasp-top-10', 'seguridad-de-skills',
     'sentry-security-review', 'gha-security-review', 'secret-serialization', 'skill-scanner',
+    'no-entendi',
   ];
   for (const s of todas) {
     afirmar(existsSync(join(d, 'skills', s, 'SKILL.md')), `no copió ${s}`);
@@ -132,6 +133,14 @@ caso('configuración limpia: copia las skills y escribe los dos enganches', () =
   afirmar(existsSync(join(d, 'skills', 'flujo-loop', 'hook.mjs')), 'no copió el hook');
   afirmar(cuantos(d, 'UserPromptSubmit') === 1, 'falta el enganche de entrada');
   afirmar(cuantos(d, 'Stop') === 1, 'falta el enganche de cierre');
+  afirmar(cuantos(d, 'PreToolUse') === 1, 'falta el guardrail de git');
+  const pre = ajustes(d).hooks.PreToolUse.find((g) =>
+    (g.hooks ?? []).some((c) => String(c.command).includes('flujo-loop')));
+  //  🔑 Por PowerShell también: en Windows es la otra herramienta de comandos, y un guardrail
+  //  sólo para Bash deja pasar el mismo `reset --hard` por la puerta de al lado.
+  for (const t of ['Bash', 'PowerShell']) {
+    afirmar(new RegExp(`(^|\\|)${t}(\\||$)`).test(pre.matcher ?? ''), `el guardrail no mira ${t}: ${pre.matcher}`);
+  }
 });
 
 caso('🔑 correrlo dos veces no duplica nada', () => {
@@ -141,6 +150,7 @@ caso('🔑 correrlo dos veces no duplica nada', () => {
   afirmar(r.code === 0, `la segunda vez dio ${r.code}: ${r.out}`);
   afirmar(cuantos(d, 'UserPromptSubmit') === 1, `duplicó el de entrada`);
   afirmar(cuantos(d, 'Stop') === 1, `duplicó el de cierre`);
+  afirmar(cuantos(d, 'PreToolUse') === 1, `duplicó el guardrail`);
 });
 
 caso('conserva las otras claves de la configuración', () => {

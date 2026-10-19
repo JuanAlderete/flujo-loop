@@ -77,6 +77,23 @@ de un espacio, y acá va después de un acento grave.
 herramientas pre-aprobadas de una copia de afuera queda en lo mínimo que de verdad usa, con el
 cambio registrado. Lo que necesite más, pasa por el pedido de permiso normal.
 
+## El guardrail de git y `/no-entendi` (propias, no copias)
+
+Se evaluaron `git-guardrails-claude-code` y `wait-what` de mattpocock/skills (MIT). **No se
+copiaron**, por dos defectos verificados:
+
+- **El guardrail no protege nada en Windows.** Su script lee el comando con `jq`, que no está
+  instalado: con `git reset --hard` de entrada dio `jq: command not found` y **salió en 0**, o
+  sea que lo dejó pasar en silencio. Además mira sólo la herramienta Bash —por PowerShell pasa
+  todo— y le pide al agente editar la configuración a mano, que es lo que el instalador existe
+  para evitar.
+- **`wait-what` pide re-explicar en inglés técnico simplificado** (ASD-STE100). Para quien no lee
+  código y habla español, es lo contrario de lo que hace falta.
+
+Se escribieron propias: el guardrail como un tercer evento del mismo hook (Node, sin `jq`, Bash
+y PowerShell, con el instalador cableándolo), y `no-entendi` en español, sólo invocable por la
+persona, con crédito a la idea original.
+
 ## Las tres pruebas
 
 ### 1 · El fallo observado, textual
@@ -112,6 +129,21 @@ comparación.
 | el guard busca un nombre sin ruta sólo en la raíz | sólo el chequeo de `00-vulnerability-index.md` |
 | se saca un archivo de `faltan_en_origen` | sólo los dos chequeos de ese archivo (con ruta y sin ruta) |
 | aparece un archivo que estaba declarado como faltante | sólo "declara que falta ... pero existe" |
+| el guardrail deja de tratar `push` como peligroso | sólo el caso de los comandos destructivos, en `git push` |
+| el guardrail deja de saltear las opciones globales | sólo `git -C otra/carpeta push` |
+| el guardrail deja de respetar las comillas | sólo `git commit -m "primero esto; git push despues"`, que pasó a bloquearse |
+| `clean` se bloquea con cualquier opción | sólo `git clean -n`, que pasó a bloquearse |
+| el guardrail deja de mirar PowerShell | sólo el caso de PowerShell |
+| el instalador engancha el guardrail sin `matcher` | sólo la configuración limpia, que exige Bash y PowerShell |
+
+Del guardrail también quedaron dos cosas anotadas:
+
+- **La de las comillas sobrevivió en el primer intento**: ningún caso dependía de ellas
+  (`echo "git push"` sale seguro igual, porque la palabra `"git` con la comilla no es git). Se
+  sumó el caso del separador adentro de un mensaje de commit, y ahí cae.
+- **Una mutación rompió los 22 casos**, y no era una mutación: la consola convirtió el argumento
+  `/^-/` en una ruta de Windows y el archivo quedó sin compilar. Se repitió desactivando esa
+  conversión y verificando que el archivo compile antes de correr la suite.
 
 ⚠️ **Dos cosas que pasaron y quedan anotadas:**
 
@@ -126,9 +158,9 @@ comparación.
 
 | control | resultado |
 |---|---|
-| `pruebas/check.mjs` | 136 chequeos, sin fallas (52 con la primera copia, 103 con la de Sentry) |
+| `pruebas/check.mjs` | 142 chequeos, sin fallas (52 con la primera copia, 103 con la de Sentry) |
 | `pruebas/check.mjs --self-test` | 35 casos, sin fallas |
-| `pruebas/hook.test.mjs` | 18 casos, sin fallas |
+| `pruebas/hook.test.mjs` | 23 casos, sin fallas (18 antes del guardrail) |
 | `pruebas/instalar.test.mjs` | 11 casos, sin fallas |
 
 ## Lo que NO se pudo verificar
