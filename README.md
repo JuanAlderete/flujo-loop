@@ -132,8 +132,3 @@ node pruebas/check.mjs --self-test  # que el verificador rechace lo que tiene qu
 node pruebas/hook.test.mjs          # el hook, incluido que FALLE ABIERTO
 node pruebas/instalar.test.mjs      # el instalador, incluido que NO pise una config mal escrita
 ```
-
-⚠️ **Si tocás algo de acá, verificalo por mutación**: rompé lo que acabás de proteger y mirá que
-la suite se caiga. Tres de las fallas que estas suites encontraron durante su propio desarrollo
-eran **casos que pasaban por la razón equivocada** — exactamente lo que este paquete existe para
-atajar. Un test que nunca se vio fallar no es un control probado.
