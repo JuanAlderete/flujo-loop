@@ -106,7 +106,11 @@ Antes de cambiar nada, invocá la skill \`flujo-loop\` y seguí su orden. En res
    de que se aplicó), y los números de cada control. Más lo que NO se pudo verificar.
 
 La persona que pide esto probablemente no lee código, y otra persona audita después: la prueba
-de que algo funciona tiene que quedar ESCRITA, no demostrada en la conversación.`;
+de que algo funciona tiene que quedar ESCRITA, no demostrada en la conversación.
+
+LAS SKILLS: proponé y ejecutá. La persona no sabe qué skills hay: cuando una sirve para lo que
+pide, proponela vos, por su nombre y con una frase de para qué. Y cuando se habla de una skill,
+EJECUTALA con su comando. NUNCA leas la skill para interpretarla y hacer vos lo que dice.`;
 
 // ── El guardrail de git (PreToolUse) ──────────────────────────────────────────
 //

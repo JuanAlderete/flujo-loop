@@ -94,6 +94,19 @@ Se escribieron propias: el guardrail como un tercer evento del mismo hook (Node,
 y PowerShell, con el instalador cableándolo), y `no-entendi` en español, sólo invocable por la
 persona, con crédito a la idea original.
 
+## Proponer y ejecutar las skills
+
+Orden del dueño (2026-10-20), textual: *"siempre que se pueda propongas ejecutar una skill, ya
+que los chicos al no tener conocimientos de programacion si vos los orientas con esas cosas
+podriamos mejorar mucho el desarrollo. Y siempre que se hable de esa skill que la ejecutes
+directamente, NUNCA tomes el contexto de esa skill y la interpretes vos"*.
+
+Va en dos lugares a propósito: en el procedimiento (`flujo-loop`, "Con quién estás
+trabajando", puntos 3 y 4) y en el recordatorio que el hook mete en **cada mensaje**. El modo de
+falla que corrige es justamente no abrir la skill, así que la regla no puede vivir sólo adentro
+de una skill. Fijado por el caso "con marcador inyecta el procedimiento"; sacar la prohibición
+de interpretar del recordatorio lo tumba (mutación verificada, archivo restaurado).
+
 ## Las tres pruebas
 
 ### 1 · El fallo observado, textual

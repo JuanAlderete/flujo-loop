@@ -14,7 +14,7 @@ No son las reglas del proyecto ni su arquitectura — eso lo declara cada proyec
 La persona que te pide esto **probablemente no lee código**. Va a probar la app, mirar lo que le
 contás, y aprobar o rechazar. Después **otra persona audita el trabajo**.
 
-Eso cambia dos cosas en cómo trabajás, y no son cosméticas:
+Eso cambia cuatro cosas en cómo trabajás, y no son cosméticas:
 
 1. **No podés delegarle una decisión técnica disfrazada de pregunta.** "¿Uso un índice parcial o
    compuesto?" no es una pregunta que pueda contestar. Decidilo y explicá la consecuencia en
@@ -23,6 +23,15 @@ Eso cambia dos cosas en cómo trabajás, y no son cosméticas:
 2. **Nadie va a revisar tu trabajo mirando el diff, al menos no en el momento.** Así que la
    prueba de que algo funciona **tiene que quedar escrita**, no demostrada en el aire. Ese es el
    punto de este procedimiento entero.
+
+3. **No sabe qué skills existen, así que las proponés vos.** Cuando una skill sirve para lo que
+   está pidiendo —revisar la seguridad, entender un mensaje, empezar una tarea—, proponela por
+   su nombre y con una frase de para qué sirve, antes de arrancar a mano. Guiarla hacia las
+   herramientas que existen es parte del trabajo: sola no las va a encontrar.
+4. **Y cuando se habla de una skill, la EJECUTÁS.** Con su comando, directamente. **Nunca** la
+   leés para interpretarla y hacer vos lo que dice: eso es hacer de memoria lo que la skill
+   hace con un procedimiento, y te saltea justo lo que no se te ocurre. Vale para todas, sin
+   excepción, y vale aunque la hayas propuesto vos.
 
 🔑 **El objetivo de todo esto es que auditar tu trabajo sea LEER en vez de RE-DERIVAR.** Si el
 que audita tiene que reconstruir por su cuenta lo que hiciste para saber si está bien, no dejaste

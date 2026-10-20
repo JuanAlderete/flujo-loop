@@ -105,6 +105,11 @@ caso('con marcador inyecta el procedimiento', () => {
   const ctx = j.hookSpecificOutput?.additionalContext ?? '';
   afirmar(ctx.includes('flujo-loop'), 'el contexto no nombra la skill');
   afirmar(/grilling/.test(ctx), 'el contexto no nombra el primer paso');
+  //  Orden del dueño: las skills se PROPONEN (la persona no sabe que existen) y se EJECUTAN,
+  //  nunca se leen para hacer a mano lo que dicen. Tiene que estar en cada mensaje, no sólo en
+  //  la skill, porque el modo de falla es justamente no abrirla.
+  afirmar(/propon[eé]/i.test(ctx), 'el contexto no pide proponer skills');
+  afirmar(/nunca/i.test(ctx) && /interpret/i.test(ctx), 'el contexto no prohíbe interpretar una skill');
 });
 
 caso('entrada mal formada no revienta', () => {
