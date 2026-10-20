@@ -45,8 +45,27 @@ Y si querés ver qué va a hacer antes de que lo haga:
 node instalar.mjs --simular
 ```
 
-El instalador hace dos cosas: copia las tres skills a tu configuración de Claude Code, y escribe
+El instalador hace dos cosas: copia las skills a tu configuración de Claude Code, y escribe
 los dos enganches en tu archivo de configuración **conservando lo que ya tuvieras ahí**.
+
+| skill | qué es |
+|---|---|
+| `flujo-loop` | el procedimiento: en qué orden se hacen las cosas y qué prueba queda |
+| `grilling` | se ejecuta antes de empezar: pregunta lo que no se te ocurre |
+| `test-driven-development` | se ejecuta al empezar a implementar |
+| `owasp-top-10` | base de consulta del **OWASP Top 10:2025** para revisar el código de la app antes de presentarlo. Copia fija de [microsoft/hve-core](https://github.com/microsoft/hve-core) |
+| `sentry-security-review` | el **procedimiento** de la revisión de seguridad: seguir el dato antes de acusar, reportar sólo lo confirmado. Copia fija de [getsentry/skills](https://github.com/getsentry/skills), con **una** línea cambiada: el nombre, porque el original (`security-review`) reemplaza en silencio al `/security-review` que trae Claude Code. El cambio está registrado y es verificable en su `ORIGEN.json` |
+| `gha-security-review` | revisa los workflows de CI buscando cómo explotarlos. Copia fija de getsentry/skills, con `allowed-tools` recortado. ⚠️ Da por seguro `${{ }}` dentro de `with:`, y en `actions/github-script` `script:` eso es inyección: ver su `ORIGEN.json` |
+| `secret-serialization` | busca secretos que se filtran al serializar (logs, `JSON.stringify`, `repr`). Copia fija de getsentry/skills, sin cambios |
+| `skill-scanner` | escanea una skill de afuera. Copia fija de getsentry/skills, con `allowed-tools` recortado: su script se corre pasando por el pedido de permiso. **Su salida son pistas, no un aprobado** |
+| `seguridad-de-skills` | qué revisar antes de sumar, actualizar o escribir una skill, según el **OWASP Agentic Skills Top 10** |
+
+> 🔑 **Las skills copiadas de otro repo se instalan sólo si siguen idénticas a su fuente.** Cada
+> una trae un `ORIGEN.json` con el commit exacto y el hash de cada archivo. Si algo no coincide,
+> o aparece un archivo que la fuente no tiene, el instalador **no instala nada** y te dice qué
+> cambió. Una skill es comportamiento, no documentación: lo que dice, el agente lo hace con tus
+> credenciales. Para actualizarla se lee el diff entero contra el commit nuevo y recién ahí se
+> regenera su `ORIGEN.json` — ver `seguridad-de-skills`.
 
 > ⚠️ **Por qué esto es un script y no "copiá esta carpeta y pegá este texto".** Lo primero —copiar
 > carpetas— se podría hacer a mano sin problema. Lo segundo no: el archivo de configuración es
@@ -78,6 +97,15 @@ en la lista. Si no aparece, revisá que la carpeta se llame exactamente así y q
 |---|---|
 | en cada mensaje tuyo | mete el procedimiento en contexto, así el agente lo tiene sin que nadie lo invoque |
 | cuando el agente va a decir "listo" | no lo deja si hay trabajo sin su archivo de rastro |
+| antes de que el agente corra un comando | frena los de git que **borran trabajo sin vuelta atrás o lo publican**: `push`, `reset --hard`, `clean -f`, `branch -D`, `checkout .`, `restore .`. Por Bash y por PowerShell. Decide por el subcomando real: un mensaje de commit que dice "push" no se bloquea |
+
+> ⚠️ **El guardrail no es un sandbox.** Un comando disfrazado lo esquiva. Es una red contra el
+> error —el `reset --hard` que borra lo que alguien hizo sin que sepa que existía—, no contra
+> alguien que quiere romper algo a propósito. Si de verdad hace falta uno de esos comandos, lo
+> corre la persona, sabiendo qué hace.
+
+Y si un mensaje del agente no se entiende: **`/no-entendi`**. Le pide que lo vuelva a explicar
+más simple, con el contexto que falta y diciendo qué cambia en la app, no en el código.
 
 El archivo de rastro se llama **`flujo/<nombre-de-la-rama>.md`** y va commiteado. Ahí viven el
 objetivo, las decisiones **con su por qué**, y las tres pruebas:
@@ -91,6 +119,11 @@ objetivo, las decisiones **con su por qué**, y las tres pruebas:
    re-verificar.
 
 Más **lo que no se pudo verificar**, que es obligatorio y es lo primero que busca el que audita.
+
+Y **una sola presentación por tarea, con la tarea terminada**: no se presenta un cambio a medias
+por cada punto resuelto. Cada presentación dispara los controles que corren en el servidor, que
+se pagan y se acaban — y se agotaron en días por presentar de a pedacitos. Antes de presentar
+corren, en local, los controles del proyecto y la revisión de seguridad contra el OWASP Top 10.
 
 ## Qué NO hace
 

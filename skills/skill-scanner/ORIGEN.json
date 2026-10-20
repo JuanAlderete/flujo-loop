@@ -1,0 +1,31 @@
+{
+  "fuente": "https://github.com/getsentry/skills",
+  "ruta": "skills/skill-scanner",
+  "commit": "d18b7aa8ba878354e5c348310230e652f7690f9c",
+  "copiado": "2026-10-19",
+  "licencia": "Apache-2.0 (getsentry/skills).",
+  "modificaciones": {
+    "archivo": "SKILL.md",
+    "sha256_original": "b0fdcbb9cd0d11e0425815fa37bb5483b13e6dce5fe5f3aeb4529dc8f80708bd",
+    "cambios": [
+      {
+        "antes": "allowed-tools: Read Grep Glob Bash",
+        "despues": "allowed-tools: Read Grep Glob",
+        "motivo": "allowed-tools concede esas herramientas sin pedir permiso mientras la skill está activa, y el SKILL.md no las usa (OWASP AST03). Regla de flujo-loop: lo mínimo que la skill usa de verdad. Su script (uv run, que baja pyyaml de PyPI) se puede correr igual, con el pedido de permiso normal."
+      }
+    ],
+    "verificar": "Deshacer cada línea (cada \"despues\" vuelve a su \"antes\"): el sha256 del archivo tiene que dar sha256_original."
+  },
+  "actualizar": "Leer el diff entero contra el commit nuevo, volver a aplicar las modificaciones y regenerar estos hashes.",
+  "advertencias": [
+    "Su salida son pistas, no un aprobado (AST08): el script no analiza lo que está en references/, ni archivos de la raíz fuera de SKILL.md, ni carpetas anidadas, y confía en github.com y raw.githubusercontent.com, donde cualquiera publica.",
+    "El script sigue enlaces simbólicos al leer e imprime la evidencia de secretos sin enmascarar: correrlo sólo sobre carpetas sin enlaces."
+  ],
+  "sha256": {
+    "SKILL.md": "75b38e9e560e598c4e26fbd256afc21c9a7566df8ceb6c88c60d256c637494e2",
+    "references/dangerous-code-patterns.md": "9fe3e09ccc9f472271472b3dc8b20337b84e3161f949565102342b056e39a677",
+    "references/permission-analysis.md": "ed6c1ca37b31313869fa418f7fddf5df9f8213c2dac3d97a9f5a7eadc02833b3",
+    "references/prompt-injection-patterns.md": "237e41599d0d4d2d2af99683f77ad3ef6e504dff190b0ff58bbd310f11182228",
+    "scripts/scan_skill.py": "58f6f3f0164b5d1b96378207f9c717dd26554175df30d1ebbc7128fbf5d593ac"
+  }
+}

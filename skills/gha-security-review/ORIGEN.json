@@ -1,0 +1,35 @@
+{
+  "fuente": "https://github.com/getsentry/skills",
+  "ruta": "skills/gha-security-review",
+  "commit": "b11ee5163295996fa6449c4842749811c82ac77c",
+  "copiado": "2026-10-19",
+  "licencia": "Apache-2.0 (getsentry/skills).",
+  "modificaciones": {
+    "archivo": "SKILL.md",
+    "sha256_original": "b75c6c43ff99c82b3cf44519bd30723917de97064f225e392ecfd6fdcd7455bd",
+    "cambios": [
+      {
+        "antes": "allowed-tools: Read Grep Glob Bash Task",
+        "despues": "allowed-tools: Read Grep Glob",
+        "motivo": "allowed-tools concede esas herramientas sin pedir permiso mientras la skill está activa, y el SKILL.md no las usa (OWASP AST03). Regla de flujo-loop: lo mínimo que la skill usa de verdad."
+      }
+    ],
+    "verificar": "Deshacer cada línea (cada \"despues\" vuelve a su \"antes\"): el sha256 del archivo tiene que dar sha256_original."
+  },
+  "actualizar": "Leer el diff entero contra el commit nuevo, volver a aplicar las modificaciones y regenerar estos hashes.",
+  "advertencias": [
+    "Falso negativo de la fuente: da por seguro ${{ }} dentro de with:. En actions/github-script, script: se evalúa como código, así que interpolar ahí datos del evento ES inyección: se revisa igual."
+  ],
+  "sha256": {
+    "SKILL.md": "e15c1f7d586e8a3cc1bd3b5a096750a5887c45a225617323efec9adf5aea20ca",
+    "references/ai-prompt-injection-via-ci.md": "9177d24968ac5b8d719b9f6748f91751d5e157ae0afa4d41cd0bb760356f23a2",
+    "references/comment-triggered-commands.md": "243526302999b7cbcbff4bbdd01c7d16377b1c60a86ee8877326c2b2b040a0b3",
+    "references/credential-escalation.md": "7febad6c0e4073dabfb338ee4646c2dd484251ad7d18b500ea83ad6fd9ac1a1d",
+    "references/expression-injection.md": "f701049355e4758207f77efc53c8e4a42f377eaa15240a2c867446154041d4f0",
+    "references/permissions-and-secrets.md": "6b6837c5f37ff85cf18c1f611f882202ce0ce41cb006b55dd49c4da52f976779",
+    "references/pwn-request.md": "6dd84c91ce77d57883059edf95c2f1c64ea1ec39551c5c8208e0cadb9c3ca673",
+    "references/real-world-attacks.md": "761260977a220264a1ee30e0b961618495723c2e6cc4e91893b7d9d4a9408718",
+    "references/runner-infrastructure.md": "cb427fa29c34c10aef18766441e0be8e0123632bb87c307bdb8d1c40b47fc81e",
+    "references/supply-chain.md": "1f80df872a1be8f70ccf1be0bb25b2e24ee1ec2ac6a9f3d7a53800cb361bfa86"
+  }
+}
