@@ -129,6 +129,25 @@ De ahí sale la primera de las tres pruebas que tenés que dejar.
 - **Arreglá la causa, no el síntoma.** Antes de editar, mirá **quién más** llama a lo que vas a
   tocar. Un arreglo en la función compartida es un cambio más chico que uno en cada llamador — y
   parchear sólo el camino que el pedido nombra deja a todos los hermanos roto, en silencio.
+- **Contenido real o un placeholder honesto.** Nada de datos, testimonios ni números inventados,
+  ni en la pantalla ni en los datos de ejemplo que se ven. Si falta el dato real, ponés un
+  placeholder que diga que lo es. Un dato inventado que parece real lo cree quien mira la
+  pantalla, y nadie se entera de que no lo era.
+- **Los atajos se marcan.** Si tomás un atajo a propósito —algo más simple de lo ideal, con un
+  límite conocido—, lo dejás marcado en el código con un comentario `atajo:` que diga **qué
+  simplificaste, hasta dónde sirve (el límite) y cuándo mejorarlo**. Después los listás en el
+  rastro, en "atajos conocidos". Un atajo sin «cuándo» no es una decisión, es un olvido: se
+  marca como "sin cuándo" en el rastro y va al reporte en **Conviene**.
+- **¿Hace falta que exista?** Antes de escribir código, subí esta escalera y frená en el primer
+  escalón que alcance:
+  1. ¿Hace falta? Si lo pedido no lo necesita, no lo escribas, y decilo.
+  2. ¿Ya existe en el proyecto? Entonces se reutiliza.
+  3. ¿Lo resuelve la plataforma o algo que ya está instalado? Entonces se usa eso.
+  4. Recién ahí, lo mínimo que funciona.
+
+  **Lo que nunca se recorta**, por más simple que sea el camino: la validación en los límites
+  (donde entra algo de afuera), la seguridad, la accesibilidad, y el manejo de errores que
+  evita perder datos. El Paso 2 no se negocia: lo mínimo se aplica al código, no a las pruebas.
 
 ## Paso 4 · Antes de decir que terminaste: los controles
 
@@ -230,6 +249,11 @@ reemplaza nada del rastro, la evidencia técnica sigue ahí para quien sí lee c
 Un hallazgo que no pudiste resolver va en **Debe**, marcado "no se pudo resolver": decide la
 persona, no vos.
 
+**Ofrecé `/no-entendi`.** Cuando cerrás un mensaje largo —el reporte final lo es— terminalo con una
+línea que lo ofrezca: "Si algo no se entiende, escribí /no-entendi y te lo explico más simple."
+Esa línea va sólo en el chat, no en el rastro. La persona no sabe que el comando existe, y no
+va a pedir lo que no sabe que puede pedir.
+
 ---
 
 ## Las tres pruebas
@@ -315,6 +339,8 @@ Qué lleva:
 | **decisiones** | lo que se decidió y **por qué**. El cambio muestra el qué, nunca el por qué |
 | **las tres pruebas** | el fallo textual, la mutación, los números |
 | **lo que no pude verificar** | obligatorio |
+| **uso de la pantalla** | sólo si tocaste pantallas: la cuarta prueba, elemento por elemento (ver "Si tocás pantallas") |
+| **atajos conocidos** | sólo si hay atajos: cada uno con su límite y cuándo mejorarlo (ver el Paso 3). Sin atajos, no se escribe la sección |
 | **estado** | qué falta. Se tilda sólo lo que se vio funcionar |
 
 ⚠️ **Un tilde no es una aprobación.** Marcar algo como hecho no lo valida: lo valida la prueba
@@ -363,6 +389,30 @@ Y si el proyecto tiene más de un lenguaje visual conviviendo —porque está en
 rediseño, por ejemplo— averiguá a cuál responde **esa** pantalla antes de tocarla. Aplicarle el
 nuevo a una que todavía responde al viejo **no lo atrapa ningún control automático**: no es un
 valor prohibido, es el sistema equivocado.
+
+### La cuarta prueba: usar la pantalla
+
+Las tres pruebas son de tests y controles, y una pantalla puede pasarlos todos sin que nadie la
+haya usado. Por eso, si tocás una pantalla, hay una **cuarta prueba**: **usá cada elemento
+interactivo** (botones, enlaces, campos, menús) y anotá en el rastro, **elemento por elemento**,
+la acción que hiciste, el resultado y los errores de consola. Además va lo que no pudiste
+probar —por ejemplo, en un celular real—, que se declara también en "lo que no pude verificar".
+
+### Checklist de accesibilidad y celular
+
+Una lista corta para repasar la pantalla, sin herramientas aparte. Lo que no cumple va al reporte
+como hallazgo, o a "lo que no pude verificar" si no lo pudiste mirar.
+
+- **Contraste**: el texto se lee sobre su fondo, también el deshabilitado y el de ayuda.
+- **Foco**: al moverte con el teclado se ve dónde estás parado.
+- **Teclado**: todo lo que se hace con el mouse o el dedo se puede hacer sin ellos.
+- **Estados**: cada elemento tiene su aspecto cargando, vacío, con error y deshabilitado.
+- **Zoom**: con el texto agrandado nada se superpone ni se corta.
+- **Desbordes**: un texto largo o un nombre largo no rompe el diseño ni se sale de su caja.
+- **Botones**: son lo bastante grandes para tocarlos con el dedo, con el tamaño que el proyecto
+  declara.
+- **Navegación**: se puede volver, se sabe en qué pantalla se está, y nada deja a la persona
+  sin salida.
 
 ---
 

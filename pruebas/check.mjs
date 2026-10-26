@@ -213,6 +213,61 @@ const REQUISITOS = [
       CERCA('descart', 'rastro', 300),
     ],
   }],
+  ['flujo-loop', 'pantallas: la cuarta prueba usa cada elemento y anota acción, resultado y errores de consola', {
+    desde: '### La cuarta prueba', hasta: '### Checklist de accesibilidad',
+    patrones: [
+      /cuarta prueba/,
+      /cada\s+elemento\s+interactivo/,
+      /elemento por elemento[\s\S]{0,300}errores de consola/,
+      /celular real[\s\S]{0,300}no pude verificar/,
+      /sin\s+que\s+nadie\s+la\s+haya\s+usado/,
+    ],
+  }],
+  ['flujo-loop', 'pantallas: el checklist propio cubre accesibilidad y celular, sin script de contraste', {
+    desde: '### Checklist de accesibilidad', hasta: '## Lo que esta skill NO dice',
+    patrones: [
+      /\*\*Contraste\*\*/, /\*\*Foco\*\*/, /\*\*Teclado\*\*/,
+      /\*\*Estados\*\*[\s\S]{0,200}cargando[\s\S]{0,60}vacío[\s\S]{0,60}error[\s\S]{0,60}deshabilitado/,
+      /\*\*Zoom\*\*/, /\*\*Desbordes\*\*/,
+      /\*\*Botones\*\*[\s\S]{0,200}dedo/,
+      /\*\*Navegación\*\*/,
+    ],
+  }],
+  ['flujo-loop', 'el rastro lista el uso de la pantalla y los atajos conocidos (sólo si los hay)', {
+    desde: '## El rastro', hasta: '## Cuando alguien encuentra algo',
+    patrones: [
+      /\| \*\*uso de la pantalla\*\* \|[^\n]*elemento por elemento/,
+      /\| \*\*atajos conocidos\*\* \|[^\n]*sólo si hay/,
+    ],
+  }],
+  ['flujo-loop', 'el Paso 3 pide contenido real o un placeholder que diga que lo es', {
+    desde: '## Paso 3', hasta: '## Paso 4',
+    patrones: [
+      /\*\*Contenido real o un placeholder honesto\.\*\*[\s\S]{0,400}testimonios/,
+      /placeholder que diga que lo es/,
+    ],
+  }],
+  ['flujo-loop', 'el Paso 3 marca los atajos con su límite y cuándo mejorarlos, y marca el que no tiene cuándo', {
+    desde: '## Paso 3', hasta: '## Paso 4',
+    patrones: [
+      /\*\*Los atajos se marcan\.\*\*[\s\S]{0,300}`atajo:`/,
+      /límite[\s\S]{0,200}cuándo mejorarlo/,
+      /atajos conocidos/,
+      /atajo\s+sin\s+«cuándo»[\s\S]{0,200}se\s+marca\s+como\s+"sin\s+cuándo"[\s\S]{0,120}\*\*Conviene\*\*/,
+    ],
+  }],
+  ['flujo-loop', 'el Paso 3 trae la escalera de decisión y lo que nunca se recorta', {
+    desde: '## Paso 3', hasta: '## Paso 4',
+    patrones: [
+      /¿Hace falta que exista\?[\s\S]{0,300}¿Ya existe en el proyecto\?[\s\S]{0,300}plataforma[\s\S]{0,300}lo mínimo/,
+      /Lo que nunca se recorta[\s\S]{0,300}validación en los límites[\s\S]{0,200}seguridad[\s\S]{0,200}accesibilidad[\s\S]{0,200}perder datos/,
+      /Paso 2 no se negocia/,
+    ],
+  }],
+  ['flujo-loop', 'el Paso 5 hace que el agente ofrezca /no-entendi al cerrar un mensaje largo', {
+    desde: '## Paso 5', hasta: '## Las tres pruebas',
+    patrones: [/Ofrecé\s+`\/no-entendi`[\s\S]{0,300}mensaje\s+largo[\s\S]{0,300}sólo\s+en\s+el\s+chat/],
+  }],
   ['seguridad-de-skills', 'pide skill-scanner cada vez que entra o se actualiza una skill de afuera', {
     patrones: [/skill-scanner/],
   }],

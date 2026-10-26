@@ -106,7 +106,7 @@ en la lista. Si no aparece, revisá que la carpeta se llame exactamente así y q
 > corre la persona, sabiendo qué hace.
 
 Y si un mensaje del agente no se entiende: **`/no-entendi`**. Le pide que lo vuelva a explicar
-más simple, con el contexto que falta y diciendo qué cambia en la app, no en el código.
+más simple, con el contexto que falta y diciendo qué cambia en la app, no en el código. El agente te lo ofrece solo al final de los mensajes largos.
 
 El archivo de rastro se llama **`flujo/<nombre-de-la-rama>.md`** y va commiteado. Ahí viven el
 objetivo, las decisiones **con su por qué**, y las tres pruebas:

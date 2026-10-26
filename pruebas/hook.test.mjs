@@ -131,6 +131,12 @@ caso('el recordatorio dice que el rastro abre con el reporte llano, también com
   afirmar(/mensaje final/i.test(ctx), 'el contexto no dice que el reporte es el mensaje final');
 });
 
+caso('el recordatorio manda ofrecer /no-entendi al cerrar un mensaje largo', () => {
+  const d = repo('recordatorio-no-entendi');
+  const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
+  afirmar(/ofrec[eé][\s\S]{0,80}\/no-entendi[\s\S]{0,120}mensaje largo/i.test(ctx), 'el contexto no manda ofrecer /no-entendi');
+});
+
 caso('entrada mal formada no revienta', () => {
   const d = repo('mal-formada');
   const r = correr(null, d);

@@ -114,6 +114,7 @@ Antes de cambiar nada, invocá la skill \`flujo-loop\` y seguí su orden. En res
    conversación (dos si toca plata, datos o permisos); si es sólo docs, anotalo en el reporte.
    Si sumaste, copiaste, actualizaste o escribiste una skill:
    \`/seguridad-de-skills\`.
+   Ofrecé \`/no-entendi\` al cerrar un mensaje largo: la persona no sabe que existe.
 
 La persona que pide esto probablemente no lee código, y otra persona audita después: la prueba
 de que algo funciona tiene que quedar ESCRITA, no demostrada en la conversación.
