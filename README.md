@@ -58,6 +58,7 @@ los dos enganches en tu archivo de configuración **conservando lo que ya tuvier
 | `gha-security-review` | revisa los workflows de CI buscando cómo explotarlos. Copia fija de getsentry/skills, con `allowed-tools` recortado. ⚠️ Da por seguro `${{ }}` dentro de `with:`, y en `actions/github-script` `script:` eso es inyección: ver su `ORIGEN.json` |
 | `secret-serialization` | busca secretos que se filtran al serializar (logs, `JSON.stringify`, `repr`). Copia fija de getsentry/skills, sin cambios |
 | `skill-scanner` | escanea una skill de afuera. Copia fija de getsentry/skills, con `allowed-tools` recortado: su script se corre pasando por el pedido de permiso. **Su salida son pistas, no un aprobado** |
+| `revision-independiente` | la revisión de **corrección** antes de presentar, hecha por un revisor nuevo que no vio la conversación (dos si el cambio toca plata, datos o permisos). Aparte de la de seguridad. Propia |
 | `seguridad-de-skills` | qué revisar antes de sumar, actualizar o escribir una skill, según el **OWASP Agentic Skills Top 10** |
 
 > 🔑 **Las skills copiadas de otro repo se instalan sólo si siguen idénticas a su fuente.** Cada

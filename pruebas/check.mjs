@@ -164,6 +164,32 @@ const REQUISITOS = [
     desde: '## El rastro', hasta: '## Cuando alguien encuentra algo',
     patrones: [/\|---\|---\|\r?\n\| \*\*reporte (en lenguaje )?llano\*\*/i],
   }],
+  ['flujo-loop', 'el Paso 5 corre la revisión independiente: siempre, con segundo revisor en plata/datos/permisos, y docs-only se anota', {
+    desde: '## Paso 5', hasta: '## Las tres pruebas',
+    patrones: [
+      /revision-independiente/,
+      /siempre/i,
+      CERCA('segundo revisor', '(plata|datos|permisos)', 300),
+      CERCA('(docs|documentaci[óo]n|texto)', 'revisión no aplicada', 300),
+    ],
+  }],
+  ['revision-independiente', 'el revisor es nuevo y no vio la conversación; un segundo ciego en plata/datos/permisos', {
+    patrones: [
+      CERCA('(subagente|sesión)', 'no vio la conversación', 300),
+      CERCA('segundo revisor', '(plata|datos|permisos)', 400),
+      CERCA('segundo', '(no ve|ciego)', 300),
+    ],
+  }],
+  ['revision-independiente', 'exige caso concreto, leer a quienes usan el código y no inflar la prioridad', {
+    patrones: [/sin un caso concreto no hay hallazgo/i, /llaman|usan|llamadores/i, /prioridad/i],
+  }],
+  ['revision-independiente', 'entrega hallazgos Debe/Conviene/Opcional con las cuatro partes y los riesgos que el flujo no nombra', {
+    patrones: [
+      /\bDebe\b/, /\bConviene\b/, /\bOpcional\b/,
+      /qué es/i, /el problema/i, /el arreglo/i, /qué pasa si no se\s+arregla/i,
+      /variables de entorno/i, /flag/i, /lo que se pidió romper/i,
+    ],
+  }],
   ['seguridad-de-skills', 'pide skill-scanner cada vez que entra o se actualiza una skill de afuera', {
     patrones: [/skill-scanner/],
   }],
