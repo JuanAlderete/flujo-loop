@@ -97,8 +97,9 @@ en la lista. Si no aparece, revisá que la carpeta se llame exactamente así y q
 | cuándo | qué |
 |---|---|
 | en cada mensaje tuyo | mete el procedimiento en contexto, así el agente lo tiene sin que nadie lo invoque |
-| cuando el agente va a decir "listo" | no lo deja si hay trabajo sin su archivo de rastro |
+| cuando el agente va a decir "listo" | no lo deja si hay trabajo sin su archivo de rastro, o si el rastro no trae sus cuatro encabezados (reporte en lenguaje llano, decisiones, las tres pruebas, lo que no se pudo verificar). Mira que estén, no lo que dicen |
 | antes de que el agente corra un comando | frena los de git que **borran trabajo sin vuelta atrás o lo publican**: `push`, `reset --hard`, `clean -f`, `branch -D`, `checkout .`, `restore .`. Por Bash y por PowerShell. Decide por el subcomando real: un mensaje de commit que dice "push" no se bloquea |
+| ídem, para **producción** | frena `supabase db push`, `supabase db query --linked`, `supabase migration repair --linked` y `prisma migrate deploy`: necesitan la autorización explícita del dueño. No frena `supabase db query` sin `--linked`, `migration list` ni `prisma migrate dev` |
 
 > ⚠️ **El guardrail no es un sandbox.** Un comando disfrazado lo esquiva. Es una red contra el
 > error —el `reset --hard` que borra lo que alguien hizo sin que sepa que existía—, no contra

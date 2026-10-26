@@ -69,3 +69,16 @@ hallazgos **y qué se arregló de cada uno**. Un hallazgo no se acepta a ciegas:
 de tocar nada, porque un revisor también se equivoca. Cada hallazgo que verificaste y
 descartaste también va al rastro, con el motivo: si no, quien audita no puede distinguirlo de
 uno que se olvidó.
+
+## Cuántas vueltas
+
+**Hasta 2 vueltas** de arreglar y volver a revisar, y no más. Sin un tope, el agente da vueltas
+sin fin o declara resuelto lo que no lo está.
+
+1. **Primera vuelta:** la revisión devuelve hallazgos, vos arreglás lo que corresponda y se
+   vuelve a revisar.
+2. **Segunda vuelta:** lo mismo, una sola vez más.
+
+Lo que el revisor sigue encontrando después de la segunda vuelta **no se vuelve a arreglar**: va
+al reporte llano en **Debe**, marcado "no se pudo resolver", con las cuatro partes de siempre.
+Eso lo decide la persona, no vos.

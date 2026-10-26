@@ -233,6 +233,10 @@ Antes de presentar, además de los controles:
    y el texto de pantalla no son documentación. En la duda, se corre. Si no se aplica, el
    reporte lo dice en "Lo que no se revisó": **"revisión no aplicada: cambio de sólo docs"**.
 
+   **Tope: 2 vueltas** de arreglar y volver a revisar. Lo que la revisión sigue encontrando
+   después de la segunda va a **Debe**, marcado "no se pudo resolver", y decide la persona
+   (ver `/revision-independiente`, "Cuántas vueltas").
+
 Al rastro va qué categorías revisaste y **qué encontraste en cada una, aunque sea nada**. "Se
 revisó la seguridad" sin el detalle es un tilde, no una prueba.
 
@@ -347,6 +351,11 @@ Qué lleva:
 | **uso de la pantalla** | sólo si tocaste pantallas: la cuarta prueba, elemento por elemento, y una línea por cada punto del checklist: cumple, no cumple o no lo pude mirar (ver "Si tocás pantallas") |
 | **atajos conocidos** | sólo si hay atajos: cada uno con su límite y cuándo mejorarlo (ver el Paso 3). Sin atajos, no se escribe la sección |
 | **estado** | qué falta. Se tilda sólo lo que se vio funcionar |
+
+El hook de cierre (`Stop`) exige que el rastro traiga cuatro **encabezados**: el reporte en
+lenguaje llano, las decisiones, las tres pruebas y lo que no se pudo verificar. Cada uno va como
+encabezado propio (una línea que empieza con `#`), no como una palabra dentro de otro texto.
+Verifica que estén, nunca lo que dicen: eso es trabajo de la revisión independiente.
 
 ⚠️ **Un tilde no es una aprobación.** Marcar algo como hecho no lo valida: lo valida la prueba
 que dejaste al lado. Un archivo de rastro todo tildado y sin pruebas es peor que uno a medias con

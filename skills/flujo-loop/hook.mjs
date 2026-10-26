@@ -6,9 +6,11 @@
  *
  *   `UserPromptSubmit` → mete el procedimiento en contexto. Así no depende de que alguien se
  *                        acuerde de invocar la skill, que es el mecanismo que ya falló.
- *   `Stop`             → no deja declarar "listo" si hay trabajo sin rastro.
+ *   `Stop`             → no deja declarar "listo" si hay trabajo sin rastro, o si el rastro no
+ *                        trae sus encabezados (sólo que estén, nunca lo que dicen).
  *   `PreToolUse`       → el guardrail: frena los comandos de git que borran trabajo sin vuelta
- *                        atrás, o que lo publican. Ver más abajo.
+ *                        atrás, o que lo publican, y los comandos que escriben en la base de
+ *                        producción (lista fija). Ver más abajo.
  *
  * Actúa **sólo** en repos con el marcador `.flujo-loop` en la raíz. En cualquier otro proyecto no
  * hace absolutamente nada.
@@ -20,7 +22,7 @@
  *
  * Así que sólo bloquea cuando determinó POSITIVAMENTE que hay cambios sin rastro. Ante un error,
  * una entrada rara, un dato que no pudo obtener o un repo en un estado que no entiende, sale en 0
- * y se calla.
+ * y se calla. Eso incluye un rastro que existe pero no se puede leer.
  */
 
 import { existsSync, readFileSync } from 'node:fs';
@@ -29,6 +31,26 @@ import { spawnSync } from 'node:child_process';
 
 const MARCADOR = '.flujo-loop';
 const CARPETA_RASTRO = 'flujo';
+
+/**
+ * Los encabezados que el rastro tiene que traer: [nombre para el mensaje, patrón del texto].
+ * El patrón se aplica al texto del encabezado ya sin tildes ni mayúsculas, y tiene que cubrirlo
+ * ENTERO: así una palabra en prosa, o en un ítem de lista, no cuenta como encabezado.
+ */
+const ENCABEZADOS = [
+  ['Reporte en lenguaje llano', /reporte en lenguaje llano/],
+  ['Decisiones', /decisiones/],
+  ['Las tres pruebas', /las tres pruebas/],
+  ['Lo que no se pudo verificar', /lo que no (se )?pud[eo] verificar/],
+];
+
+const sinTildes = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+
+/** Los nombres de los encabezados que no están en el rastro. Sólo mira la forma, no el contenido. */
+function encabezadosFaltantes(texto) {
+  const titulos = [...texto.matchAll(/^#{1,6}[ \t]+(.+?)[ \t#]*$/gm)].map((m) => sinTildes(m[1]).trim());
+  return ENCABEZADOS.filter(([, re]) => !titulos.some((t) => new RegExp(`^(${re.source})$`).test(t))).map(([n]) => n);
+}
 
 /** Sale en 0 sin decir nada. El camino por defecto ante cualquier duda. */
 function callarse() {
@@ -204,11 +226,48 @@ function peligro(palabras) {
   return null;
 }
 
+/**
+ * Comandos que escriben en la base de producción. Lista fija a propósito: que cada proyecto
+ * declare los suyos obliga a parsear su archivo de reglas, y eso se suma cuando alguien lo pida.
+ *
+ * Cada tramo se mira por sus palabras sueltas (no por el texto), así `npx`/`bunx` delante y las
+ * opciones en cualquier orden no lo esquivan, y un `echo "supabase db push"` no lo dispara.
+ */
+function produccion(palabras) {
+  const nombre = (re) => palabras.findIndex((p) => re.test(p));
+  const posicionales = (desde) => palabras.slice(desde + 1).filter((p) => !p.startsWith('-'));
+
+  const s = nombre(/(^|[\\/])supabase(\.exe|\.cmd)?$/i);
+  if (s >= 0) {
+    const [a, b] = posicionales(s);
+    const linked = palabras.includes('--linked');
+    if (a === 'db' && b === 'push') return 'aplica las migraciones pendientes en la base de producción';
+    if (a === 'db' && b === 'query' && linked) return 'ejecuta SQL contra la base de producción';
+    if (a === 'migration' && b === 'repair' && linked) return 'reescribe el historial de migraciones de producción';
+  }
+  const p = nombre(/(^|[\\/])prisma(\.exe|\.cmd)?$/i);
+  if (p >= 0) {
+    const [a, b] = posicionales(p);
+    if (a === 'migrate' && b === 'deploy') return 'aplica las migraciones en la base de producción';
+  }
+  return null;
+}
+
 function guardrail(entrada) {
   if (!HERRAMIENTAS_DE_COMANDOS.has(entrada.tool_name)) return callarse();
   const comando = String(entrada.tool_input?.command ?? '');
   for (const palabras of tramos(comando)) {
     const motivo = peligro(palabras);
+    const deProduccion = motivo ? null : produccion(palabras);
+    if (deProduccion) {
+      process.stderr.write(
+        `Bloqueado por flujo-loop: "${palabras.join(' ')}" ${deProduccion}.\n\n` +
+          `Esto necesita la autorización explícita del dueño del proyecto, cada vez: no alcanza ` +
+          `con que los tests estén verdes. Explicale a la persona qué hace y esperá su ` +
+          `autorización. Para probar, usá una copia local, nunca producción.\n`,
+      );
+      process.exit(2);
+    }
     if (!motivo) continue;
     process.stderr.write(
       `Bloqueado por flujo-loop: "${palabras.join(' ')}" ${motivo}, y eso no tiene vuelta atrás.\n\n` +
@@ -255,7 +314,24 @@ async function main() {
 
   const { rastro, pendientes } = estado;
   if (pendientes.length === 0) return callarse(); // no hay trabajo que respaldar
-  if (existsSync(join(raiz, rastro))) return callarse();
+  if (existsSync(join(raiz, rastro))) {
+    //  Falla abierto: si existe pero no se puede leer, no es asunto del hook decidir nada.
+    let texto;
+    try {
+      texto = readFileSync(join(raiz, rastro), 'utf8');
+    } catch {
+      return callarse();
+    }
+    const faltan = encabezadosFaltantes(texto);
+    if (faltan.length === 0) return callarse();
+    process.stderr.write(
+      `El rastro existe (${rastro}) pero le faltan encabezados, y todavía no se puede dar por ` +
+        `terminado.\n\nFalta:\n${faltan.map((n) => `  - ${n}`).join('\n')}\n\n` +
+        `Cada uno va como encabezado propio (una línea que empieza con #), no como una palabra ` +
+        `dentro de otro texto. Invocá la skill \`flujo-loop\` para ver qué lleva cada sección.\n`,
+    );
+    process.exit(2);
+  }
 
   const muestra = pendientes.slice(0, 5);
   const resto = pendientes.length - muestra.length;

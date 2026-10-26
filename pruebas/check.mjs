@@ -213,6 +213,33 @@ const REQUISITOS = [
       CERCA('descart', 'rastro', 300),
     ],
   }],
+  ['revision-independiente', 'tope de 2 vueltas de arreglar y revisar; lo que persiste va a Debe como "no se pudo resolver" y lo decide la persona', {
+    desde: '## Cuántas vueltas',
+    patrones: [
+      /\*\*Hasta 2 vueltas\*\*/,
+      CERCA('2 vueltas', 'arreglar y volver a revisar', 120),
+      CERCA('segunda vuelta', '\\*\\*Debe\\*\\*', 400),
+      CERCA('\\*\\*Debe\\*\\*', '"no se pudo resolver"', 200),
+      CERCA('"no se pudo resolver"', 'decide la persona', 300),
+    ],
+  }],
+  ['flujo-loop', 'el Paso 5 apunta al tope de 2 vueltas y a "no se pudo resolver" en Debe', {
+    desde: '## Paso 5', hasta: '## Las tres pruebas',
+    patrones: [
+      CERCA('2 vueltas', 'revisión', 300),
+      CERCA('2 vueltas', '"no se pudo resolver"', 500),
+    ],
+  }],
+  ['flujo-loop', 'el rastro exige cuatro encabezados y avisa que el Stop los verifica', {
+    desde: '## El rastro', hasta: '## Cuando alguien encuentra algo',
+    patrones: [
+      CERCA('Stop', 'encabezados', 200),
+      CERCA('encabezados', 'reporte\\s+en\\s+lenguaje\\s+llano', 300),
+      CERCA('encabezados', 'decisiones', 300),
+      CERCA('encabezados', 'las\\s+tres\\s+pruebas', 300),
+      CERCA('encabezados', 'lo\\s+que\\s+no\\s+(se\\s+)?pud[eo]\\s+verificar', 300),
+    ],
+  }],
   ['flujo-loop', 'pantallas: la cuarta prueba usa cada elemento y anota acción, resultado y errores de consola', {
     desde: '### La cuarta prueba', hasta: '### Checklist de accesibilidad',
     patrones: [
