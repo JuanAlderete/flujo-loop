@@ -43,7 +43,10 @@ function correr(evento, dir, { sinGit = false } = {}) {
   return { code: r.status, out: r.stdout || '', err: r.stderr || '' };
 }
 
+//  SOLO=texto corre únicamente los casos cuyo nombre lo contiene: la suite entera tarda minutos
+//  (cada caso arma un repo con git) y para probar una mutación alcanza con el caso que la ve.
 function caso(nombre, fn) {
+  if (process.env.SOLO && !nombre.includes(process.env.SOLO)) return;
   corridos++;
   try {
     fn();
@@ -373,9 +376,9 @@ Object.keys(ENCABEZADOS).forEach((falta, n) => {
     const d = repoConRastro(`stop-falta-${n}`, texto);
     const r = correr('Stop', d);
     afirmar(r.code === 2, `esperaba 2 y dio ${r.code}`);
-    afirmar(r.err.includes(`  - ${falta}`), `el mensaje no nombra "${falta}": ${r.err}`);
+    afirmar(r.err.includes(`  ${ENCABEZADOS[falta]}\n`), `el mensaje no pide la línea de "${falta}": ${r.err}`);
     for (const otro of Object.keys(ENCABEZADOS).filter((k) => k !== falta)) {
-      afirmar(!r.err.includes(`  - ${otro}`), `nombra "${otro}" que sí está: ${r.err}`);
+      afirmar(!r.err.includes(`  ${ENCABEZADOS[otro]}\n`), `pide "${otro}" que sí está: ${r.err}`);
     }
   });
 });
@@ -384,7 +387,7 @@ caso('🔑 Stop con el rastro sin ningún encabezado BLOQUEA y los nombra todos'
   const d = repoConRastro('stop-sin-encabezados', '# rastro\nnada más\n');
   const r = correr('Stop', d);
   afirmar(r.code === 2, `esperaba 2 y dio ${r.code}`);
-  for (const k of Object.keys(ENCABEZADOS)) afirmar(r.err.includes(`  - ${k}`), `no nombra "${k}": ${r.err}`);
+  for (const k of Object.keys(ENCABEZADOS)) afirmar(r.err.includes(`  ${ENCABEZADOS[k]}\n`), `no pide la línea de "${k}": ${r.err}`);
 });
 
 caso('🔑 Stop con las palabras sólo en prosa BLOQUEA', () => {
@@ -476,6 +479,131 @@ caso('PreToolUse de producción sin marcador no bloquea', () => {
   const d = repo('prod-sin-marcador', { marcador: false });
   afirmar(herramienta(d, 'supabase db push').code === 0, 'sin marcador no tiene que actuar');
 });
+
+// ── Ronda 1 de la revisión: encabezados con decoración, BOM, bloques de código ──
+
+/** Un rastro completo donde el encabezado `quien` (índice) se escribe con la línea dada. */
+function rastroCon(quien, linea) {
+  const base = Object.values(ENCABEZADOS);
+  return base.map((h, i) => `${i === quien ? linea : h}\nx\n`).join('\n');
+}
+
+caso('Stop con el rastro guardado con BOM no bloquea', () => {
+  //  El BOM tiene que quedar pegado al PRIMER encabezado: delante de '# rastro' no probaría nada.
+  const d = repoConRastro('stop-bom', '\uFEFF' + RASTRO_COMPLETO.replace('# rastro\n', ''));
+  const r = correr('Stop', d);
+  afirmar(r.code === 0, `un BOM al principio no cambia los encabezados, dio ${r.code}: ${r.err}`);
+});
+
+const DECORADOS = [
+  [0, '## 📋 Reporte en lenguaje llano'],
+  [0, '## 1. Reporte en lenguaje llano'],
+  [0, '## **Reporte en lenguaje llano**'],
+  [0, '## Reporte en lenguaje llano:'],
+  [1, '## Decisiones y por qué'],
+  [1, '## Decisiones, y por qué'],
+  [3, '## Lo que NO se pudo verificar ⚠️'],
+  [2, '## Las 3 pruebas'],
+];
+DECORADOS.forEach(([quien, linea], n) => {
+  caso(`Stop acepta el encabezado decorado: ${linea}`, () => {
+    const d = repoConRastro(`stop-decorado-${n}`, rastroCon(quien, linea));
+    const r = correr('Stop', d);
+    afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.err}`);
+  });
+});
+
+caso('🔑 Stop con "Decisionesx" (la palabra pegada a otra) BLOQUEA', () => {
+  const d = repoConRastro('stop-pegada', rastroCon(1, '## Decisionesx'));
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `esperaba 2 y dio ${r.code}`);
+  afirmar(r.err.includes('  ## Decisiones\n'), `no pide Decisiones: ${r.err}`);
+});
+
+caso('🔑 Stop con "Mis decisiones" (el título no arranca con lo pedido) BLOQUEA', () => {
+  const d = repoConRastro('stop-mis', rastroCon(1, '## Mis decisiones'));
+  afirmar(correr('Stop', d).code === 2, 'tenía que bloquear');
+});
+
+caso('🔑 Stop con los cuatro encabezados sólo dentro de un bloque de código BLOQUEA', () => {
+  const dentro = '```\n' + Object.values(ENCABEZADOS).join('\nx\n') + '\n```\n';
+  const d = repoConRastro('stop-cercado', `# rastro\n${dentro}`);
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `un ejemplo dentro de un cerco no es un encabezado, dio ${r.code}`);
+});
+
+caso('Stop vuelve a mirar los encabezados después de cerrar el bloque de código', () => {
+  const texto = '```\n## ejemplo\n```\n' + RASTRO_COMPLETO;
+  const d = repoConRastro('stop-despues-del-cerco', texto);
+  afirmar(correr('Stop', d).code === 0, 'los encabezados de después del cerco cuentan');
+});
+
+caso('el mensaje del Stop imprime las líneas exactas aceptadas y avisa que son de #', () => {
+  const d = repoConRastro('stop-mensaje', '# rastro\n');
+  const r = correr('Stop', d);
+  for (const linea of Object.values(ENCABEZADOS)) {
+    afirmar(r.err.includes(linea), `no imprime la línea "${linea}": ${r.err}`);
+  }
+  afirmar(/setext/i.test(r.err), `no avisa que el subrayado con === no se acepta: ${r.err}`);
+});
+
+// ── Ronda 1: el guardrail de producción, más difícil de esquivar ──────────────
+
+const PRODUCCION_RONDA_1 = [
+  'supabase --workdir x db push',
+  'supabase -p x db push',
+  'prisma --schema x.prisma migrate deploy',
+  'npx prisma@5 migrate deploy',
+  'npx supabase@latest db push',
+  'pnpm dlx supabase db push',
+  'yarn dlx prisma migrate deploy',
+  'supabase.ps1 db push',
+  'bash -c "supabase db push"',
+  "sh -c 'prisma migrate deploy'",
+  'sudo bash -lc "supabase db push"',
+  '(supabase db push)',
+  'echo $(supabase db push)',
+  'echo `supabase db push`',
+  'supabase db \\\npush',
+  'FOO=1 supabase db push',
+  'env FOO=1 supabase db push',
+  'sudo supabase db push',
+  'supabase db query --linked=true "select 1"',
+  'supabase migration repair --linked=si --status applied 1',
+  //  Fijado a propósito: una línea de un heredoc que ES el comando se lee como comando. Falla
+  //  del lado seguro (bloquea de más, nunca de menos); el techo está dicho en el código.
+  'cat <<EOF\nsupabase db push\nEOF',
+  //  El mismo envoltorio vale para git.
+  'bash -c "git push"',
+];
+
+const PRODUCCION_SEGURA_RONDA_1 = [
+  'echo supabase db push',
+  'grep -rn supabase db push docs',
+  'supabase db push --dry-run',
+  'supabase db push --help',
+  'supabase db push -h',
+  'prisma migrate deploy --help',
+  'bash -c "echo supabase db push"',
+  'git log --grep "supabase db push"',
+];
+
+PRODUCCION_RONDA_1.forEach((c, n) => {
+  caso(`🔑 PreToolUse bloquea (ronda 1): ${c.replace(/\n/g, '⏎')}`, () => {
+    const d = repo(`prod-r1-${n}`);
+    const r = herramienta(d, c);
+    afirmar(r.code === 2, `tenía que bloquearse y dio ${r.code}`);
+  });
+});
+
+caso('🔑 PreToolUse NO bloquea lo que no es el comando (ronda 1)', () => {
+  const d = repo('prod-r1-seguros');
+  for (const c of PRODUCCION_SEGURA_RONDA_1) {
+    const r = herramienta(d, c);
+    afirmar(r.code === 0, `"${c}" no tenía que bloquearse y dio ${r.code}: ${r.err}`);
+  }
+});
+
 
 // ── Salida ────────────────────────────────────────────────────────────────────
 

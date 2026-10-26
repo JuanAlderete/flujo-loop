@@ -7,7 +7,8 @@
  *   `UserPromptSubmit` → mete el procedimiento en contexto. Así no depende de que alguien se
  *                        acuerde de invocar la skill, que es el mecanismo que ya falló.
  *   `Stop`             → no deja declarar "listo" si hay trabajo sin rastro, o si el rastro no
- *                        trae sus encabezados (sólo que estén, nunca lo que dicen).
+ *                        trae sus encabezados (sólo que estén, nunca lo que dicen). No mira
+ *                        `stop_hook_active`: mientras la condición siga, bloquea cada vez.
  *   `PreToolUse`       → el guardrail: frena los comandos de git que borran trabajo sin vuelta
  *                        atrás, o que lo publican, y los comandos que escriben en la base de
  *                        producción (lista fija). Ver más abajo.
@@ -33,23 +34,53 @@ const MARCADOR = '.flujo-loop';
 const CARPETA_RASTRO = 'flujo';
 
 /**
- * Los encabezados que el rastro tiene que traer: [nombre para el mensaje, patrón del texto].
- * El patrón se aplica al texto del encabezado ya sin tildes ni mayúsculas, y tiene que cubrirlo
- * ENTERO: así una palabra en prosa, o en un ítem de lista, no cuenta como encabezado.
+ * Los encabezados que el rastro tiene que traer: [línea exacta que se acepta, patrón del título].
+ *
+ * El patrón se aplica al título ya sin tildes ni mayúsculas y sin la decoración que lo precede
+ * (emoji, `1.`, `**`): tiene que estar AL PRINCIPIO del título, y lo que sigue puede ser el fin
+ * de la línea, un signo, o más palabras ("Decisiones y por qué"). Lo que no puede seguir es una
+ * letra: "Decisionesx" no es "Decisiones". Una palabra en prosa, en un ítem de lista o en medio
+ * de otro título ("Mis decisiones") no cuenta.
+ *
+ * ⚠️ Sólo encabezados con `#`. El subrayado con `===` o `---` (setext) no se reconoce, y el
+ * mensaje de bloqueo lo dice.
  */
 const ENCABEZADOS = [
-  ['Reporte en lenguaje llano', /reporte en lenguaje llano/],
-  ['Decisiones', /decisiones/],
-  ['Las tres pruebas', /las tres pruebas/],
-  ['Lo que no se pudo verificar', /lo que no (se )?pud[eo] verificar/],
+  ['## Reporte en lenguaje llano', 'reporte en lenguaje llano'],
+  ['## Decisiones', 'decisiones'],
+  ['## Las tres pruebas', 'las (tres|3) pruebas'],
+  ['## Lo que no se pudo verificar', 'lo que no (se )?pud[eo] verificar'],
 ];
 
 const sinTildes = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
 
-/** Los nombres de los encabezados que no están en el rastro. Sólo mira la forma, no el contenido. */
+/** Los títulos del rastro, ya normalizados: sin BOM, sin lo que está dentro de un bloque de código. */
+function titulos(texto) {
+  const salida = [];
+  let cerco = null; // la marca que abrió el bloque de código, si hay uno abierto
+  //  Un BOM al principio no hace falta quitarlo: `\s` ya lo cuenta como espacio, y el patrón del
+  //  encabezado admite espacios delante. Lo fija el caso del BOM.
+  for (const linea of texto.split(/\r?\n/)) {
+    const marca = /^\s{0,3}(```+|~~~+)/.exec(linea)?.[1];
+    if (marca) {
+      if (!cerco) cerco = marca[0];
+      else if (marca[0] === cerco) cerco = null;
+      continue;
+    }
+    if (cerco) continue;
+    const m = /^\s{0,3}#{1,6}[ \t]+(.*)$/.exec(linea);
+    if (m) salida.push(sinTildes(m[1]).replace(/^[^a-z]+/, ''));
+  }
+  return salida;
+}
+
+/** Las líneas de los encabezados que no están en el rastro. Sólo mira la forma, no el contenido. */
 function encabezadosFaltantes(texto) {
-  const titulos = [...texto.matchAll(/^#{1,6}[ \t]+(.+?)[ \t#]*$/gm)].map((m) => sinTildes(m[1]).trim());
-  return ENCABEZADOS.filter(([, re]) => !titulos.some((t) => new RegExp(`^(${re.source})$`).test(t))).map(([n]) => n);
+  const ts = titulos(texto);
+  return ENCABEZADOS.filter(([, re]) => {
+    const r = new RegExp(`^(${re})(?![a-z])`);
+    return !ts.some((t) => r.test(t));
+  }).map(([linea]) => linea);
 }
 
 /** Sale en 0 sin decir nada. El camino por defecto ante cualquier duda. */
@@ -163,7 +194,10 @@ de controles, el reporte final): la persona no sabe que existe.`;
 
 const HERRAMIENTAS_DE_COMANDOS = new Set(['Bash', 'PowerShell']);
 
-/** Parte un comando en tramos (`;`, `&&`, `||`, `|`, salto de línea) y cada tramo en palabras. */
+/**
+ * Parte un comando en tramos (`;`, `&&`, `||`, `|`, salto de línea, paréntesis y comilla
+ * invertida: `(cmd)`, `$(cmd)` y `cmd` son comandos aparte) y cada tramo en palabras.
+ */
 function tramos(comando) {
   const salida = [];
   let palabras = [];
@@ -188,7 +222,7 @@ function tramos(comando) {
       continue;
     }
     if (c === '"' || c === "'") { comilla = c; enPalabra = true; continue; }
-    if (c === ';' || c === '|' || c === '&' || c === '\n') { cerrarTramo(); continue; }
+    if (';|&\n()`'.includes(c)) { cerrarTramo(); continue; }
     if (/\s/.test(c)) { cerrarPalabra(); continue; }
     palabra += c;
     enPalabra = true;
@@ -226,37 +260,83 @@ function peligro(palabras) {
   return null;
 }
 
+const NOMBRE = (p) => p.split(/[\\/]/).pop().toLowerCase();
+
+/**
+ * Dónde está el comando de verdad en un tramo: se saltean las asignaciones (`VAR=valor`) y los
+ * envoltorios (`env`, `sudo`, `npx`, `bunx`, `pnpm dlx`, `yarn dlx`) con sus opciones. Devuelve el
+ * índice, o el largo si no queda nada. Así `echo supabase db push` no cuenta: el comando es echo.
+ */
+function posicionDelComando(palabras) {
+  let i = 0;
+  while (i < palabras.length) {
+    const w = palabras[i];
+    if (/^[A-Za-z_]\w*=/.test(w)) { i++; continue; }
+    const n = NOMBRE(w);
+    if (['env', 'sudo', 'npx', 'bunx'].includes(n)) { i++; }
+    else if (['pnpm', 'yarn'].includes(n) && ['dlx', 'exec'].includes(palabras[i + 1])) { i += 2; }
+    else break;
+    while (i < palabras.length && palabras[i].startsWith('-')) i++;
+  }
+  return i;
+}
+
+/** Si `sub` aparece como palabras consecutivas en `palabras` (con opciones antes o después). */
+const contiene = (palabras, sub) =>
+  palabras.some((_, k) => sub.every((x, j) => palabras[k + j] === x));
+
 /**
  * Comandos que escriben en la base de producción. Lista fija a propósito: que cada proyecto
  * declare los suyos obliga a parsear su archivo de reglas, y eso se suma cuando alguien lo pida.
  *
- * Cada tramo se mira por sus palabras sueltas (no por el texto), así `npx`/`bunx` delante y las
- * opciones en cualquier orden no lo esquivan, y un `echo "supabase db push"` no lo dispara.
+ * Se mira por palabras sueltas, no por el texto, y sólo si el programa está EN POSICIÓN DE
+ * COMANDO (ver `posicionDelComando`): `echo supabase db push` o `grep supabase db push docs` no
+ * disparan. El subcomando se busca como secuencia consecutiva entre lo que sigue al programa,
+ * así una opción con valor antes (`--workdir x`) no lo esquiva; `npx prisma@5` y los `.exe`,
+ * `.cmd`, `.ps1` tampoco. `--linked=lo-que-sea` cuenta como `--linked`. `--dry-run`, `--help`
+ * y `-h` no escriben nada, y no se frenan.
+ *
+ * ⚠️ Techo conocido: la línea de un heredoc que es literalmente `supabase db push` se lee como un
+ * comando y bloquea. Falla del lado seguro (de más, nunca de menos) y está fijado en un test.
  */
 function produccion(palabras) {
-  const nombre = (re) => palabras.findIndex((p) => re.test(p));
-  const posicionales = (desde) => palabras.slice(desde + 1).filter((p) => !p.startsWith('-'));
+  const i = posicionDelComando(palabras);
+  if (i >= palabras.length) return null;
+  const programa = NOMBRE(palabras[i]).replace(/@[^@]*$/, '').replace(/\.(exe|cmd|ps1)$/, '');
+  const resto = palabras.slice(i + 1);
+  if (resto.some((w) => ['--dry-run', '--help', '-h'].includes(w))) return null;
+  const linked = resto.some((w) => w === '--linked' || w.startsWith('--linked='));
 
-  const s = nombre(/(^|[\\/])supabase(\.exe|\.cmd)?$/i);
-  if (s >= 0) {
-    const [a, b] = posicionales(s);
-    const linked = palabras.includes('--linked');
-    if (a === 'db' && b === 'push') return 'aplica las migraciones pendientes en la base de producción';
-    if (a === 'db' && b === 'query' && linked) return 'ejecuta SQL contra la base de producción';
-    if (a === 'migration' && b === 'repair' && linked) return 'reescribe el historial de migraciones de producción';
+  if (programa === 'supabase') {
+    if (contiene(resto, ['db', 'push'])) return 'aplica las migraciones pendientes en la base de producción';
+    if (linked && contiene(resto, ['db', 'query'])) return 'ejecuta SQL contra la base de producción';
+    if (linked && contiene(resto, ['migration', 'repair'])) return 'reescribe el historial de migraciones de producción';
   }
-  const p = nombre(/(^|[\\/])prisma(\.exe|\.cmd)?$/i);
-  if (p >= 0) {
-    const [a, b] = posicionales(p);
-    if (a === 'migrate' && b === 'deploy') return 'aplica las migraciones en la base de producción';
+  if (programa === 'prisma' && contiene(resto, ['migrate', 'deploy'])) {
+    return 'aplica las migraciones en la base de producción';
   }
   return null;
+}
+
+/**
+ * Los tramos de un comando, y los de lo que corre un `bash -c "..."` (también sh, zsh, dash),
+ * hasta tres niveles. Un salto de línea con barra al final es un espacio, no un corte.
+ */
+function* segmentos(comando, nivel = 0) {
+  for (const palabras of tramos(comando.replace(/\\\r?\n/g, ' '))) {
+    yield palabras;
+    const i = posicionDelComando(palabras);
+    if (nivel < 3 && /^(ba|z|da)?sh$/.test(NOMBRE(palabras[i] ?? ''))) {
+      const c = palabras.findIndex((w, k) => k > i && /^-[a-z]*c$/.test(w));
+      if (c >= 0 && palabras[c + 1]) yield* segmentos(palabras[c + 1], nivel + 1);
+    }
+  }
 }
 
 function guardrail(entrada) {
   if (!HERRAMIENTAS_DE_COMANDOS.has(entrada.tool_name)) return callarse();
   const comando = String(entrada.tool_input?.command ?? '');
-  for (const palabras of tramos(comando)) {
+  for (const palabras of segmentos(comando)) {
     const motivo = peligro(palabras);
     const deProduccion = motivo ? null : produccion(palabras);
     if (deProduccion) {
@@ -326,9 +406,11 @@ async function main() {
     if (faltan.length === 0) return callarse();
     process.stderr.write(
       `El rastro existe (${rastro}) pero le faltan encabezados, y todavía no se puede dar por ` +
-        `terminado.\n\nFalta:\n${faltan.map((n) => `  - ${n}`).join('\n')}\n\n` +
-        `Cada uno va como encabezado propio (una línea que empieza con #), no como una palabra ` +
-        `dentro de otro texto. Invocá la skill \`flujo-loop\` para ver qué lleva cada sección.\n`,
+        `terminado.\n\nAgregá estas líneas, tal cual (se acepta otro nivel de #, mayúsculas, ` +
+        `tildes y algo de texto después del título):\n${faltan.map((l) => `  ${l}`).join('\n')}\n\n` +
+        `Tienen que ser encabezados de markdown con # al principio de la línea, y fuera de un ` +
+        `bloque de código. El título subrayado con === o --- (setext) no se reconoce. Invocá la skill ` +
+        `\`flujo-loop\` para ver qué lleva cada sección.\n`,
     );
     process.exit(2);
   }

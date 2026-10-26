@@ -4,13 +4,21 @@
 
 **Qué hace este cambio**
 
-Cierra tres huecos del propio flujo-loop. Uno: el aviso de "falta el rastro" ahora también salta
+Cierra tres huecos del propio flujo-loop, y una segunda pasada corrige lo que dos revisores
+ciegos le encontraron al primer intento (ver "La revisión de este cambio"). Uno: el aviso de "falta el rastro" ahora también salta
 si el rastro existe pero está vacío de lo importante, y dice exactamente qué títulos faltan. Dos:
 el agente ya no puede correr, sin que el dueño lo autorice, los cuatro comandos que escriben en
 la base de producción (`supabase db push`, `supabase db query --linked`,
 `supabase migration repair --linked`, `prisma migrate deploy`); los parecidos que no tocan
 producción siguen pasando. Tres: la revisión independiente tiene un tope de 2 vueltas de arreglar
 y revisar, y lo que siga sin resolverse va a **Debe** como "no se pudo resolver".
+
+Tras la revisión: el aviso del cierre ya no se equivoca con títulos decorados (`## 📋 …`,
+`## 1. …`, `## **…**`, "Decisiones y por qué"), con un BOM, ni se deja engañar por un ejemplo
+dentro de un bloque de código; y dice qué líneas exactas agregar. El guardrail de producción ya
+no se esquiva con opciones antes del subcomando, `npx prisma@5`, `bash -c "…"`, `$(…)`, o un
+comando partido con `\` y salto de línea, y no frena `echo supabase db push`, `--dry-run` ni
+`--help`.
 
 **Debe**
 
@@ -34,12 +42,12 @@ Ninguno.
 
 **Veredicto**
 
-Se puede presentar, sujeto a la revisión ciega que corre el padre (ver "La revisión de este
-cambio").
+Se puede presentar. La ronda 1 de arreglos no se volvió a revisar con revisores ciegos (ver
+"La revisión de este cambio").
 
 **Lo que no se revisó**
 
-- La revisión independiente de este cambio todavía no corrió.
+- La ronda 1 de arreglos no pasó por un revisor nuevo.
 - Que un agente real obedezca el tope de 2 vueltas: los chequeos miran el texto.
 
 ## Objetivo
@@ -99,6 +107,28 @@ vacuo. Lo reanclé a "2 vueltas" cerca de "no se pudo resolver". Además, tres p
 rotos por el escapado del shell (`**` sin barras, que ni compilaba) y se corrigieron antes de
 confiar en ningún resultado.
 
+**Ronda 1 de arreglos** (casos escritos antes de tocar `hook.mjs`, suite en 88 casos):
+
+```
+FALLA  27 de 88 casos:
+  - Stop acepta el encabezado decorado: ## 📋 Reporte en lenguaje llano: esperaba 0 y dio 2
+  - Stop acepta el encabezado decorado: ## Decisiones, y por qué: esperaba 0 y dio 2
+  - Stop acepta el encabezado decorado: ## Las 3 pruebas: esperaba 0 y dio 2
+  - 🔑 Stop con los cuatro encabezados sólo dentro de un bloque de código BLOQUEA: ... dio 0
+  - el mensaje del Stop imprime las líneas exactas aceptadas ...: no imprime la línea "## Reporte en lenguaje llano"
+  - 🔑 PreToolUse bloquea (ronda 1): supabase --workdir x db push: tenía que bloquearse y dio 0
+  - 🔑 PreToolUse bloquea (ronda 1): npx prisma@5 migrate deploy: tenía que bloquearse y dio 0
+  - 🔑 PreToolUse bloquea (ronda 1): bash -c "supabase db push": tenía que bloquearse y dio 0
+  - 🔑 PreToolUse bloquea (ronda 1): echo $(supabase db push): tenía que bloquearse y dio 0
+  - 🔑 PreToolUse NO bloquea lo que no es el comando (ronda 1): "echo supabase db push" no tenía que bloquearse
+  ... (27 en total)
+```
+
+Nota de honestidad: el caso del BOM **no estaba rojo** en esa corrida, porque el BOM iba delante
+de `# rastro`, que no es un encabezado pedido: no probaba nada. Lo moví al primer encabezado
+pedido y lo comprobé por mutación (abajo). Además, el BOM no necesitaba un `replace`: `\s` ya
+lo cuenta como espacio, así que no agregué código para eso.
+
 ### 2 · Las mutaciones verificadas
 
 Hash = 16 primeros caracteres de sha256, antes / durante / restaurado desde una copia.
@@ -114,13 +144,35 @@ Hash = 16 primeros caracteres de sha256, antes / durante / restaurado desde una 
 | `hook.mjs`: el patrón de encabezado sin anclar (`^…$`) | `8d0d0c4962bed22a` / `287ae754240ed3a1` / `8d0d0c4962bed22a` | primero **sobrevivió** (50 de 50 verdes): faltaba un caso. Agregué "encabezado más largo" y entonces cayó (1 de 51) |
 | `hook.mjs`: archivo ilegible pasó de callarse a seguir con texto vacío | `8d0d0c4962bed22a` / `9e5de445066c14a6` / `8d0d0c4962bed22a` | el caso de falla abierto (1 de 51). Un primer intento no aplicó (el archivo tiene CRLF y mi texto de búsqueda no): el hash no cambió y lo descarté |
 
+Ronda 1 (corrida con `SOLO=<texto>`, que filtra los casos por nombre: la suite entera tarda
+minutos). Mismo formato de hashes; todas se restauraron desde una copia.
+
+| qué se rompió | hashes | qué se cayó |
+|---|---|---|
+| el patrón del encabezado sin `\s` (sólo espacios) | `1be5a4c00fa95f7a` / `e2e4ee27773a4830` / `1be5a4c00fa95f7a` | el caso del BOM |
+| se ignora el cerco de código | `695e7b1555ab7304` / `6cc505511282943c` / `695e7b1555ab7304` | el caso del bloque de código |
+| sin `(?![a-z])` | `695e7b1555ab7304` / `ff01a9f639b4c453` / `695e7b1555ab7304` | "Decisionesx" |
+| sin quitar la decoración inicial | `695e7b1555ab7304` / `80e048fe75528afa` / `695e7b1555ab7304` | 3 de 8 decorados |
+| `(tres\|3)` pasó a `(tres)` | `695e7b1555ab7304` / `2c038d1a82eb59cf` / `695e7b1555ab7304` | "Las 3 pruebas" |
+| `--dry-run/--help/-h` ya no exceptúan | `695e7b1555ab7304` / `1389eee5bc7bb6ef` / `695e7b1555ab7304` | el caso de lo que no bloquea |
+| `bash -c` ya no se re-lee | `695e7b1555ab7304` / `89ec03203d16c4cc` / `695e7b1555ab7304` | 4 de 22 |
+| `.ps1` fuera de la lista | `1be5a4c00fa95f7a` / `a1dc2027443a474e` / `1be5a4c00fa95f7a` | `supabase.ps1 db push`. Un primer intento buscaba "ps1" suelto, que aparece dos veces: no aplicó (mismo hash) y se rehízo |
+| `--linked=` ya no cuenta | `695e7b1555ab7304` / `38a15b3cd13f4c98` / `695e7b1555ab7304` | 2 de 22 |
+| barra + salto de línea ya no es espacio | `695e7b1555ab7304` / `c8909ce69f84f1a0` / `695e7b1555ab7304` | 1 de 22 |
+| `npx`/`sudo`/`env`/`bunx` ya no se saltean | `695e7b1555ab7304` / `7dfabf688c13b3f4` / `695e7b1555ab7304` | 5 de 22 |
+| `VAR=valor` ya no se saltea | `695e7b1555ab7304` / `1f8f1fc5c5fa1e67` / `695e7b1555ab7304` | 2 de 22 |
+| `prisma@5` ya no pierde la versión | `695e7b1555ab7304` / `bb1e6ca0126051f7` / `695e7b1555ab7304` | 2 de 22 |
+
+Un primer intento de quitar el `replace` del BOM **sobrevivió** (el caso del BOM siguió en verde): ahí se vio que
+`\s` ya lo cubre, el `replace` sobraba y se borró; la mutación que vale es la de la primera fila.
+
 ### 3 · Los números de los controles
 
 | control | resultado |
 |---|---|
-| `node pruebas/check.mjs` | `OK  171 chequeos, sin fallas.` (168 antes) |
+| `node pruebas/check.mjs` | `OK  171 chequeos, sin fallas.` |
 | `node pruebas/check.mjs --self-test` | `OK  40 casos del verificador, sin fallas.` |
-| `node pruebas/hook.test.mjs` | `OK  51 casos, sin fallas.` (26 antes) |
+| `node pruebas/hook.test.mjs` | `OK  88 casos, sin fallas.` (26 al empezar el PR) |
 | `node pruebas/instalar.test.mjs` | `OK  11 casos, sin fallas.` |
 
 ## Lo que NO se pudo verificar
@@ -132,15 +184,40 @@ Hash = 16 primeros caracteres de sha256, antes / durante / restaurado desde una 
 - Que `supabase`/`prisma` sin esos subcomandos exactos no tengan otras formas de llegar a
   producción (por ejemplo `supabase db push` por una variable o un alias): el guardrail no es un
   sandbox, igual que el de git.
-- `supabase --workdir x db push` o una opción con valor delante del subcomando (`-p x db push`)
-  no se resuelve bien: tomaría `x` como primer argumento y se escaparía. Es el techo de mirar sólo
-  los primeros dos argumentos sin opciones.
+- Un envoltorio que no está en la lista (`xargs`, `time`, `nohup`, `eval`, `bash -c` con una
+  variable) delante del comando lo esquiva: el guardrail no es un sandbox.
 - Los finales de línea: el árbol de trabajo está en CRLF (autocrlf) y el índice en LF. El diff
   contra el índice quedó chico (276 líneas), sin reescribir archivos enteros.
 
 ## La revisión de este cambio
 
-Pendiente: la corre el padre, con un revisor ciego.
+El cambio toca permisos (un guardrail que bloquea comandos), así que corrieron **dos revisores
+ciegos** sobre `43bded9`. Hallazgos de la ronda 1 y qué se hizo:
+
+| hallazgo | resultado |
+|---|---|
+| BOM al principio del rastro bloqueaba con los cuatro encabezados | arreglado (el patrón admite espacios delante y `\s` incluye el BOM); caso nuevo |
+| títulos decorados (emoji, `1.`, `**`, `:`, "Decisiones y por qué", "Decisiones, y por qué", "Las 3 pruebas") bloqueaban | arreglado; un caso por variante |
+| los encabezados de un bloque de código contaban | arreglado (se ignoran los cercos de ``` y ~~~); caso nuevo, y otro que fija que lo de después del cerco vuelve a contar |
+| el mensaje no decía qué escribir | arreglado: imprime las líneas exactas (`## Decisiones`…) y avisa que son de `#` |
+| opciones con valor antes del subcomando (`--workdir x db push`) | arreglado: el subcomando se busca como secuencia consecutiva |
+| binarios con versión, `pnpm dlx`, `.ps1` | arreglado |
+| `bash -c "…"`, `(…)`, `$(…)`, comilla invertida, `\` + salto de línea | arreglado (`bash -c` también protege a git) |
+| `echo supabase db push` y `grep supabase db push docs` bloqueaban | arreglado: el programa tiene que estar en posición de comando |
+| `--dry-run`, `--help`, `-h` bloqueaban | arreglado: no bloquean |
+| `--linked=true` no contaba como `--linked` | arreglado |
+
+**Descartados, con motivo:**
+
+- **Títulos subrayados (setext, `===` / `---`):** no se reconocen. Se sumaría un segundo parser
+  para una forma que ningún rastro del repo usa; el mensaje de bloqueo dice que no se aceptan.
+- **Una línea de heredoc que es literalmente `supabase db push`:** sigue bloqueando. Falla del
+  lado seguro (bloquea de más, nunca de menos), parsear heredocs es caro, y quedó anotado como
+  techo en el código y fijado en un test.
+- **`stop_hook_active`:** el hook no lo mira hoy. Mientras haya trabajo sin rastro completo,
+  bloquea en cada `Stop`. No se cambió, a pedido; queda dicho acá.
+
+Decisión del dueño: el cuarto encabezado sigue siendo "Decisiones".
 
 ## Estado
 
@@ -148,5 +225,5 @@ Pendiente: la corre el padre, con un revisor ciego.
 - [x] Guardrail de producción que bloquea (punto 6)
 - [x] Tope de 2 vueltas (punto 7)
 - [x] Plan y README actualizados
-- [ ] Revisión independiente (pendiente, la corre el padre)
+- [x] Revisión independiente, ronda 1 (dos revisores ciegos); ronda 1 de arreglos hecha, sin segunda revisión
 - [ ] Push, PR y merge: no los hago yo
