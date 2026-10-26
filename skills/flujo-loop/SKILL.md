@@ -203,6 +203,21 @@ Antes de presentar, además de los controles:
 Al rastro va qué categorías revisaste y **qué encontraste en cada una, aunque sea nada**. "Se
 revisó la seguridad" sin el detalle es un tilde, no una prueba.
 
+**El reporte en lenguaje llano.** Es lo último que hacés, y es para quien audita sin leer
+código. Va como **primera sección del rastro** y es **también tu mensaje final en el chat**,
+   el mismo texto: quien no programa lee el chat, no `flujo/<rama>.md`. Se **suma**: no
+   reemplaza nada del rastro, la evidencia técnica sigue ahí para quien sí lee código. Lleva:
+   - **Qué hace este cambio**: dos o tres frases, sin jerga.
+   - **Los hallazgos, numerados** en tres grupos —**Debe**, **Conviene**, **Opcional**— con una
+     sola numeración corrida, para que la persona pueda contestar "arreglá el 2 y el 5" sin leer
+     código. Cada hallazgo dice **qué es**, **el problema**, **el arreglo** y **qué pasa si no se
+     arregla**. Si no hay ninguno en un grupo, lo escribís igual y decís "ninguno".
+   - **Un veredicto**: se puede presentar, o no, y por qué.
+   - **Lo que no se revisó**: lo que quedó afuera, dicho sin suavizarlo.
+
+   Un hallazgo que no pudiste resolver va en **Debe**, marcado "no se pudo resolver": decide la
+   persona, no vos.
+
 ---
 
 ## Las tres pruebas
@@ -283,6 +298,7 @@ Qué lleva:
 
 | sección | qué va |
 |---|---|
+| **reporte en lenguaje llano** | la **primera** sección. Lo que se explica en el Paso 5, para quien audita sin leer código. Es el mismo texto que el mensaje final del chat |
 | **objetivo** | qué se quiere lograr, en una o dos líneas |
 | **decisiones** | lo que se decidió y **por qué**. El cambio muestra el qué, nunca el por qué |
 | **las tres pruebas** | el fallo textual, la mutación, los números |

@@ -147,6 +147,23 @@ const REQUISITOS = [
       /skill-scanner/,
     ],
   }],
+  ['flujo-loop', 'el Paso 5 cierra con el reporte en lenguaje llano, que es también el mensaje final', {
+    desde: '## Paso 5', hasta: '## Las tres pruebas',
+    patrones: [
+      /reporte (en lenguaje )?llano/i,
+      /Qué hace este cambio/,
+      /\bDebe\b/, /\bConviene\b/, /\bOpcional\b/,
+      /numerad/i,
+      /qué pasa si no se\s+arregla/i,
+      /veredicto/i,
+      /Lo que no se revis/i,
+      CERCA('mensaje final', 'chat', 200),
+    ],
+  }],
+  ['flujo-loop', 'el rastro lista el reporte llano como su primera sección', {
+    desde: '## El rastro', hasta: '## Cuando alguien encuentra algo',
+    patrones: [/\|---\|---\|\r?\n\| \*\*reporte (en lenguaje )?llano\*\*/i],
+  }],
   ['seguridad-de-skills', 'pide skill-scanner cada vez que entra o se actualiza una skill de afuera', {
     patrones: [/skill-scanner/],
   }],

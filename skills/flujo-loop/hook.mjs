@@ -105,9 +105,12 @@ Antes de cambiar nada, invocá la skill \`flujo-loop\` y seguí su orden. En res
 3. Los controles que declara el proyecto, reportando los números que dieron.
 4. El rastro en \`${CARPETA_RASTRO}/<rama>.md\`, commiteado, con las tres pruebas:
    el fallo textual observado antes de implementar, la mutación verificada (y la confirmación
-   de que se aplicó), y los números de cada control. Más lo que NO se pudo verificar.
+   de que se aplicó), y los números de cada control. Más lo que NO se pudo verificar. Y como
+   PRIMERA sección, el reporte en lenguaje llano (Paso 5).
 5. La última puerta: se presenta UNA sola vez, terminado, con los controles en verde y la
-   revisión de seguridad hecha. Si sumaste, copiaste, actualizaste o escribiste una skill:
+   revisión de seguridad hecha. Tu mensaje final en el chat es ese mismo reporte llano: qué hace
+   el cambio, hallazgos numerados (Debe, Conviene, Opcional), veredicto y lo que no se revisó.
+   Si sumaste, copiaste, actualizaste o escribiste una skill:
    \`/seguridad-de-skills\`.
 
 La persona que pide esto probablemente no lee código, y otra persona audita después: la prueba

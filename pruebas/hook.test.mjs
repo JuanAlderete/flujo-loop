@@ -121,6 +121,13 @@ caso('el recordatorio nombra el Paso 0, la última puerta y /seguridad-de-skills
   afirmar(ctx.includes('/seguridad-de-skills'), 'el contexto no nombra /seguridad-de-skills');
 });
 
+caso('el recordatorio dice que el rastro abre con el reporte llano, también como mensaje final', () => {
+  const d = repo('recordatorio-reporte');
+  const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
+  afirmar(/reporte (en lenguaje )?llano/i.test(ctx), 'el contexto no nombra el reporte en lenguaje llano');
+  afirmar(/mensaje final/i.test(ctx), 'el contexto no dice que el reporte es el mensaje final');
+});
+
 caso('entrada mal formada no revienta', () => {
   const d = repo('mal-formada');
   const r = correr(null, d);
