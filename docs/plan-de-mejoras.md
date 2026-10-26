@@ -8,19 +8,18 @@ piden features a un agente, y otra persona audita el resultado. flujo-loop es la
 única herramienta de desarrollo que tienen. Cada mejora se juzga contra eso:
 **¿le hace más fácil auditar a alguien que no lee código?**
 
-> Antes de implementar: este plan se charla con `/grilling` (la regla de flujo-loop).
-> Las decisiones abiertas están al final.
+> El plan se charló con `/grilling` el 2026-10-26. Lo que se decidió está en la
+> sección 6, y **donde contradice a las secciones de arriba, gana la sección 6**.
 
 ---
 
-## 0. Lo primero: mergear la rama de seguridad
+## 0. Lo primero: mergear la rama de seguridad · hecho
 
-`main` **no tiene** el Paso 5 (la revisión de seguridad antes de presentar) ni las
-skills de seguridad. Están en `feat/ultima-puerta-y-seguridad`, que va **6 commits
-adelante de `main` y 1 atrás** (medido el 2026-10-26). Quien instala flujo-loop
-hoy no las tiene.
+`feat/ultima-puerta-y-seguridad` (el Paso 5 y las skills de seguridad) se mergeó a
+`main` el 2026-10-26, en el PR #1 (merge `c1cfbce`).
 
-Las referencias `SKILL.md:NN` de este documento son de **esa rama**.
+Las referencias `SKILL.md:NN` de este documento se tomaron de esa rama antes del
+merge, y coinciden con `main` en `c1cfbce`.
 
 ---
 
@@ -177,7 +176,7 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 
 ## 5. Orden de implementación sugerido
 
-1. Mergear `feat/ultima-puerta-y-seguridad` (sección 0).
+1. ~~Mergear `feat/ultima-puerta-y-seguridad` (sección 0).~~ Hecho: PR #1.
 2. Arreglar los puntos débiles chicos: 2 (recordatorio), 3 (cuándo usar cada skill),
    4 (dónde escribe el Paso 0) y 5 (idioma).
 3. **2.1, el reporte en lenguaje llano**: lo que más le cambia la vida al auditor.
@@ -186,16 +185,28 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 6. 2.5, 2.6 y 2.7 (Paso 3), juntas.
 7. Los puntos débiles 1 (rastro vacío), 6 (producción) y 7 (límite de vueltas).
 
-Cada uno con su `/grilling`, TDD sobre las pruebas de `pruebas/` y su rastro.
+Cada uno con TDD sobre las pruebas de `pruebas/` y su rastro. El `/grilling` del
+plan entero ya se hizo (sección 6); si una pasada abre una decisión que no está
+ahí, se vuelve a charlar antes de seguir.
 
-## 6. Decisiones abiertas (para el `/grilling`)
+**Entrega:** un PR por paso de esta lista. Los pasos 5 a 7 se pueden agrupar si
+tocan los mismos archivos. Ningún PR se mergea sin el OK del dueño: el equipo
+instala desde `main`, así que lo que se mergea le llega a todos.
 
-- ¿La revisión independiente (2.2) corre siempre, o sólo en cambios grandes o que
-  toquen plata o datos?
-- ¿El reporte llano (2.1) reemplaza alguna parte del rastro, o se suma?
-- ¿El guardrail de producción (punto 6) bloquea o sólo avisa? Hoy el hook falla
-  abierto a propósito.
-- ¿Se vendoriza el verificador de contraste, o alcanza con el checklist?
+## 6. Decidido (`/grilling` del 2026-10-26)
+
+| Tema | Decisión | Por qué |
+|---|---|---|
+| Idioma (débil 5) | Una línea al principio de las copias de `grilling` y `test-driven-development`: hablarle a la persona en su idioma | No tienen `ORIGEN.json`, así que son copias propias y se pueden editar. Ponerlo sólo en `flujo-loop` no alcanza: `/grilling` se invoca suelto |
+| Dónde escribe el Paso 0 (débil 4) | Busca los controles en `AGENTS.md` y en `CLAUDE.md`, y escribe en el que ya tenga las reglas del proyecto. Si no hay ninguno, `/init` como hoy | Dos archivos de reglas, cada uno leído por una herramienta distinta, es el error que esto evita |
+| Cuándo corre cada skill suelta (débil 3) | En el Paso 5, con disparadores por archivo o contenido: `gha-security-review` si el cambio toca `.github/workflows/`; `secret-serialization` si agrega un campo con credenciales o código que convierte objetos enteros a texto (logs, respuestas, errores); `skill-scanner` dentro de `/seguridad-de-skills`, cada vez que entra o se actualiza una skill de afuera | Un disparador por archivo se puede verificar; "cuando haga falta" lo decide el agente |
+| Reporte llano (2.1) | Se **suma** como primera sección del rastro, y es también el mensaje final del agente | Quien no programa lee el chat, no el rastro. Y quien sí lee código necesita la evidencia que el rastro ya tiene |
+| Revisión independiente (2.2) | Corre **siempre**, con un revisor en un subagente nuevo que no vio la conversación. Si el cambio toca plata, datos o permisos, se suma un segundo revisor ciego. En un cambio de sólo docs se anota "revisión no aplicada" en el reporte | "Sólo en cambios grandes" le pide al agente juzgarse a sí mismo. Así, si clasifica mal, el peor caso es un revisor en vez de dos, nunca cero |
+| Límite de vueltas (débil 7) | Hasta **2 vueltas** de arreglar y revisar. Lo que persiste va al reporte en "Debe", marcado "no se pudo resolver", y decide la persona | Sin límite, el agente da vueltas o declara resuelto lo que no está |
+| Guardrail de producción (débil 6) | **Bloquea**, igual que el de git. Falla abierto sólo ante un error del propio hook. Lista fija de comandos: `supabase db push`, `supabase db query --linked`, `supabase migration repair --linked`, `prisma migrate deploy` | Un aviso lo lee el agente, no la persona. Que cada proyecto declare sus comandos obliga a parsear su archivo de reglas; se suma cuando un proyecto lo pida |
+| `Stop` y el rastro vacío (débil 1) | Exige cuatro encabezados: el reporte llano, las tres pruebas y "lo que no se pudo verificar". No juzga lo que dicen | Es barato y corta el rastro vacío. Juzgar el contenido es trabajo de la revisión independiente |
+| Contraste (2.4) | Sólo el checklist propio; **no** se vendoriza el script de Anti-Slop | Sumaría Python, una revisión de seguridad y un `ORIGEN.json` para mantener. Se revisa si aparece un caso real |
+| 2.3 a 2.8 | Tal como están escritos arriba | No tenían decisiones abiertas |
 
 ## Fuentes
 
