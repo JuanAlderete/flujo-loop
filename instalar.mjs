@@ -4,7 +4,8 @@
  *
  * Hace las dos cosas que no conviene hacer a mano:
  *
- *   1. Copia las tres skills a la configuración de Claude Code.
+ *   1. Copia las skills a la configuración de Claude Code (las de afuera, sólo si siguen
+ *      idénticas a su origen).
  *   2. Escribe los dos enganches en el archivo de configuración, **conservando** lo que ya
  *      hubiera ahí.
  *
@@ -15,28 +16,44 @@
  * 🔑 LA REGLA DE ORO: ante un archivo de configuración que no puede leer, **no escribe**. Es
  * mejor no instalar que dejar a alguien sin herramienta.
  *
+ * 🔑 Y LA SEGUNDA: una skill copiada de otro repo trae un `ORIGEN.json` con el hash de cada
+ * archivo tal como se leyó en su fuente. Si un archivo no coincide, o hay uno que el origen no
+ * lista, **no se instala nada**. Una skill de afuera es lo que más fácil entra sin que nadie la
+ * lea: una actualización ajena que cambió el texto, o un archivo agregado al lado (OWASP Agentic
+ * Skills Top 10, AST01 y AST07).
+ *
  * Uso:
  *   node instalar.mjs             instala
  *   node instalar.mjs --simular   dice qué haría, sin tocar nada
  *
  * Para probarlo sin tocar la configuración real, el destino se puede cambiar con la variable
- * de entorno FLUJO_LOOP_DESTINO.
+ * de entorno FLUJO_LOOP_DESTINO, y la carpeta de skills de origen con FLUJO_LOOP_ORIGEN.
  */
 
 import {
   mkdirSync, readdirSync, readFileSync, writeFileSync, copyFileSync, existsSync, statSync,
 } from 'node:fs';
-import { dirname, join } from 'node:path';
+import { createHash } from 'node:crypto';
+import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 
 const AQUI = dirname(fileURLToPath(import.meta.url));
-const ORIGEN = join(AQUI, 'skills');
+const ORIGEN = process.env.FLUJO_LOOP_ORIGEN || join(AQUI, 'skills');
 const DESTINO = process.env.FLUJO_LOOP_DESTINO || join(homedir(), '.claude');
 const SIMULAR = process.argv.includes('--simular') || process.argv.includes('--dry-run');
 
 const HOOK_INSTALADO = join(DESTINO, 'skills', 'flujo-loop', 'hook.mjs');
-const EVENTOS = ['UserPromptSubmit', 'Stop'];
+/**
+ * Los eventos donde engancha el hook. El de PreToolUse es el guardrail de git, y mira las dos
+ * herramientas de comandos: en Windows, un guardrail sólo para Bash deja pasar el mismo
+ * `reset --hard` por PowerShell.
+ */
+const EVENTOS = [
+  { evento: 'UserPromptSubmit' },
+  { evento: 'Stop' },
+  { evento: 'PreToolUse', matcher: 'Bash|PowerShell' },
+];
 
 /** Marca por la que se reconoce nuestro enganche, para no duplicarlo ni pisar otros. */
 const MARCA = 'flujo-loop';
@@ -62,6 +79,46 @@ const skills = existsSync(ORIGEN)
 
 if (skills.length === 0) {
   console.error(`No hay skills en ${ORIGEN}. ¿Estás corriendo esto desde la copia del repo?`);
+  process.exit(1);
+}
+
+/** Todos los archivos de una carpeta, como rutas relativas con barra normal. */
+function archivosDe(carpeta, base = carpeta) {
+  return readdirSync(carpeta).flatMap((n) => {
+    const p = join(carpeta, n);
+    return statSync(p).isDirectory() ? archivosDe(p, base) : [relative(base, p).replace(/\\/g, '/')];
+  });
+}
+
+/** Lo que no coincide con el `ORIGEN.json` de una skill de afuera. Vacío = intacta. */
+function diferenciasConOrigen(carpeta) {
+  const declarado = JSON.parse(readFileSync(join(carpeta, 'ORIGEN.json'), 'utf8')).sha256 ?? {};
+  const problemas = [];
+  for (const rel of archivosDe(carpeta).filter((r) => r !== 'ORIGEN.json')) {
+    if (!(rel in declarado)) {
+      problemas.push(`${rel}: no está en su origen`);
+      continue;
+    }
+    const real = createHash('sha256').update(readFileSync(join(carpeta, rel))).digest('hex');
+    if (real !== declarado[rel]) problemas.push(`${rel}: no coincide con su origen`);
+  }
+  for (const rel of Object.keys(declarado)) {
+    if (!existsSync(join(carpeta, rel))) problemas.push(`${rel}: falta`);
+  }
+  return problemas;
+}
+
+//  Se verifica TODO antes de copiar NADA: una instalación a medias es peor que ninguna.
+const alterados = skills
+  .filter((s) => existsSync(join(ORIGEN, s, 'ORIGEN.json')))
+  .flatMap((s) => diferenciasConOrigen(join(ORIGEN, s)).map((p) => `${s}/${p}`));
+
+if (alterados.length > 0) {
+  console.error(
+    'Una skill copiada de afuera no coincide con su origen. No se instaló nada:\n' +
+      alterados.map((a) => `  - ${a}`).join('\n') +
+      '\n\nSi la actualizaste a propósito, leé el cambio entero y regenerá su ORIGEN.json.',
+  );
   process.exit(1);
 }
 
@@ -103,7 +160,7 @@ if (existsSync(rutaAjustes)) {
 
 ajustes.hooks ??= {};
 
-for (const evento of EVENTOS) {
+for (const { evento, matcher } of EVENTOS) {
   const grupos = Array.isArray(ajustes.hooks[evento]) ? ajustes.hooks[evento] : [];
 
   //  Se saca cualquier enganche nuestro anterior y se vuelve a poner uno solo. Así correr el
@@ -116,6 +173,7 @@ for (const evento of EVENTOS) {
     .filter((g) => (g.hooks ?? []).length > 0);
 
   limpios.push({
+    ...(matcher ? { matcher } : {}),
     hooks: [{ type: 'command', command: `node "${HOOK_INSTALADO.replace(/\\/g, '/')}"` }],
   });
 
