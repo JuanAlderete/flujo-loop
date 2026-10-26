@@ -120,7 +120,10 @@ de que algo funciona tiene que quedar ESCRITA, no demostrada en la conversación
 
 LAS SKILLS: proponé y ejecutá. La persona no sabe qué skills hay: cuando una sirve para lo que
 pide, proponela vos, por su nombre y con una frase de para qué. Y cuando se habla de una skill,
-EJECUTALA con su comando. NUNCA leas la skill para interpretarla y hacer vos lo que dice.`;
+EJECUTALA con su comando. NUNCA leas la skill para interpretarla y hacer vos lo que dice.
+
+Ofrecé \`/no-entendi\` al cerrar cualquier mensaje largo (una tanda de preguntas, la propuesta
+de controles, el reporte final): la persona no sabe que existe.`;
 
 // ── El guardrail de git (PreToolUse) ──────────────────────────────────────────
 //

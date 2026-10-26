@@ -131,6 +131,18 @@ caso('el recordatorio dice que el rastro abre con el reporte llano, también com
   afirmar(/mensaje final/i.test(ctx), 'el contexto no dice que el reporte es el mensaje final');
 });
 
+caso('el recordatorio manda ofrecer /no-entendi al cerrar un mensaje largo', () => {
+  const d = repo('recordatorio-no-entendi');
+  const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
+  afirmar(/ofrec[eé][\s\S]{0,80}\/no-entendi[\s\S]{0,120}mensaje largo/i.test(ctx), 'el contexto no manda ofrecer /no-entendi');
+  //  Tiene que ser un párrafo propio: colgado del punto 5 (la última puerta) se lee como "sólo al final",
+  //  y los mensajes largos que más lo necesitan son el grilling y la propuesta de controles.
+  const parrafo = ctx.split(/\n\s*\n/).find((p) => p.includes('/no-entendi')) ?? '';
+  afirmar(!/^\s*\d+\. /.test(parrafo), 'la oferta de /no-entendi cuelga de un punto numerado');
+  afirmar(!/última puerta/.test(parrafo), 'la oferta de /no-entendi está dentro del párrafo de la última puerta');
+  afirmar(/cualquier mensaje largo/.test(parrafo), 'la oferta de /no-entendi no dice cualquier mensaje largo');
+});
+
 caso('entrada mal formada no revienta', () => {
   const d = repo('mal-formada');
   const r = correr(null, d);
