@@ -110,6 +110,8 @@ Antes de cambiar nada, invocá la skill \`flujo-loop\` y seguí su orden. En res
 5. La última puerta: se presenta UNA sola vez, terminado, con los controles en verde y la
    revisión de seguridad hecha. Tu mensaje final en el chat es ese mismo reporte llano: qué hace
    el cambio, hallazgos numerados (Debe, Conviene, Opcional), veredicto y lo que no se revisó.
+   Antes de presentar, siempre \`/revision-independiente\`: un revisor que no vio la
+   conversación (dos si toca plata, datos o permisos); si es sólo docs, anotalo en el reporte.
    Si sumaste, copiaste, actualizaste o escribiste una skill:
    \`/seguridad-de-skills\`.
 

@@ -200,6 +200,17 @@ Antes de presentar, además de los controles:
    Lo que devuelven son pistas para leer, no un aprobado: lo que dicen va al rastro con lo que
    se encontró, aunque sea nada.
 
+4. **`/revision-independiente`, la revisión de corrección.** Es distinta de la de seguridad:
+   busca lo que se rompe o da un resultado incorrecto. Corre **siempre**, con un revisor en un
+   subagente nuevo que no vio la conversación; si el cambio toca plata, datos o permisos, se
+   suma un segundo revisor ciego. Sus hallazgos entran directo al reporte llano, y vos arreglás
+   y anotás en el rastro qué se encontró, qué se arregló y qué descartaste y por qué. No se
+   saltea por "es chico": quién decide si es chico es el mismo que lo escribió. La única
+   excepción es documentación pura (un `.md` de explicación, el README, comentarios del código)
+   que nada lee como instrucción. Las skills, los prompts, las reglas del agente, las plantillas
+   y el texto de pantalla no son documentación. En la duda, se corre. Si no se aplica, el
+   reporte lo dice en "Lo que no se revisó": **"revisión no aplicada: cambio de sólo docs"**.
+
 Al rastro va qué categorías revisaste y **qué encontraste en cada una, aunque sea nada**. "Se
 revisó la seguridad" sin el detalle es un tilde, no una prueba.
 
@@ -213,7 +224,8 @@ reemplaza nada del rastro, la evidencia técnica sigue ahí para quien sí lee c
   código. Cada hallazgo dice **qué es**, **el problema**, **el arreglo** y **qué pasa si no se
   arregla**. Si no hay ninguno en un grupo, lo escribís igual y decís "ninguno".
 - **Un veredicto**: se puede presentar, o no, y por qué.
-- **Lo que no se revisó**: lo que quedó afuera, dicho sin suavizarlo.
+- **Lo que no se revisó**: lo que quedó afuera, dicho sin suavizarlo. Si la revisión
+  independiente no se aplicó, va acá: "revisión no aplicada: cambio de sólo docs".
 
 Un hallazgo que no pudiste resolver va en **Debe**, marcado "no se pudo resolver": decide la
 persona, no vos.
