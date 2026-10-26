@@ -112,6 +112,15 @@ caso('con marcador inyecta el procedimiento', () => {
   afirmar(/nunca/i.test(ctx) && /interpret/i.test(ctx), 'el contexto no prohíbe interpretar una skill');
 });
 
+caso('el recordatorio nombra el Paso 0, la última puerta y /seguridad-de-skills', () => {
+  const d = repo('recordatorio-completo');
+  const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
+  //  Estaba desfasado: enumeraba 1 a 4 y la persona nunca se enteraba del resto del procedimiento.
+  afirmar(/^0\. .*controles/m.test(ctx), 'el contexto no nombra el Paso 0 (declarar los controles)');
+  afirmar(/^5\. .*última puerta/m.test(ctx), 'el contexto no nombra el Paso 5 (la última puerta)');
+  afirmar(ctx.includes('/seguridad-de-skills'), 'el contexto no nombra /seguridad-de-skills');
+});
+
 caso('entrada mal formada no revienta', () => {
   const d = repo('mal-formada');
   const r = correr(null, d);

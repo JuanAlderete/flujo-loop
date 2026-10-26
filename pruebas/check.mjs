@@ -110,6 +110,50 @@ export function acoplamientos(texto) {
   return hallados;
 }
 
+// ── Lo que el texto de las skills propias tiene que decir ────────────────────
+
+/**
+ * Los patrones de `patrones` que NO aparecen en el texto (o en el tramo que pide `desde`/`hasta`,
+ * o en sus primeras `lineas`). Vacío = está bien.
+ *
+ * 🔑 Estructural a propósito: verifica que esté el disparador o la regla, no la prosa exacta. Y
+ * acotado a la sección: que "AGENTS.md" aparezca en cualquier parte no prueba que el Paso 0 lo diga.
+ */
+export function faltantes(texto, { desde, hasta, lineas, patrones }) {
+  let t = texto;
+  if (desde) {
+    const i = t.indexOf(desde);
+    if (i < 0) return [`no está la sección ${desde}`];
+    const f = hasta ? t.indexOf(hasta, i + desde.length) : -1;
+    t = f < 0 ? t.slice(i) : t.slice(i, f);
+  }
+  if (lineas) t = t.split('\n').slice(0, lineas).join('\n');
+  return patrones.filter((p) => !p.test(t)).map(String);
+}
+
+const CERCA = (a, b, n) => new RegExp(`${a}[\\s\\S]{0,${n}}${b}|${b}[\\s\\S]{0,${n}}${a}`);
+const IDIOMA = /(person's|their) (own )?language|language of the person/i;
+
+/** [skill, qué exige, pedido a `faltantes`]. Ver plan-de-mejoras, secciones 4 y 6. */
+const REQUISITOS = [
+  ['flujo-loop', 'el Paso 0 busca los controles en AGENTS.md y CLAUDE.md', {
+    desde: '## Paso 0', hasta: '## Paso 1', patrones: [/AGENTS\.md/, /CLAUDE\.md/, /\/init/],
+  }],
+  ['flujo-loop', 'el Paso 5 dice cuándo corre cada skill suelta', {
+    desde: '## Paso 5', hasta: '## Las tres pruebas',
+    patrones: [
+      CERCA('gha-security-review', '\\.github/workflows', 300),
+      CERCA('secret-serialization', 'credencial', 400),
+      /skill-scanner/,
+    ],
+  }],
+  ['seguridad-de-skills', 'pide skill-scanner cada vez que entra o se actualiza una skill de afuera', {
+    patrones: [/skill-scanner/],
+  }],
+  ['grilling', 'le habla a la persona en su idioma', { lineas: 12, patrones: [IDIOMA] }],
+  ['test-driven-development', 'le habla a la persona en su idioma', { lineas: 12, patrones: [IDIOMA] }],
+];
+
 // ── Lectura de las skills ─────────────────────────────────────────────────────
 
 const carpetas = existsSync(RAIZ)
@@ -277,6 +321,14 @@ function autoTest() {
   const fallas = [];
   const ok = (cond, msg) => { if (!cond) fallas.push(msg); };
 
+  //  Un requisito tiene que poder fallar: texto vacío, patrón fuera de la sección, y el caso bueno.
+  const pedido = { desde: '## A', hasta: '## B', patrones: [/zeta/] };
+  ok(faltantes('', pedido).length > 0, 'faltantes: debía fallar con un texto vacío');
+  ok(faltantes('## A\nzeta\n## B', pedido).length === 0, 'faltantes: debía aceptar el patrón dentro de la sección');
+  ok(faltantes('## A\nnada\n## B\nzeta', pedido).length > 0, 'faltantes: debía rechazar el patrón fuera de la sección');
+  ok(faltantes('uno\ndos\nzeta', { lineas: 2, patrones: [/zeta/] }).length > 0, 'faltantes: debía rechazar el patrón fuera de las primeras líneas');
+  ok(faltantes('a\nb', { patrones: [/a/, /c/] }).length === 1, 'faltantes: debía listar sólo el patrón que falta');
+
   for (const [nombre, texto, invalidos] of FRONTMATTER_ENTERO) {
     const n = camposDe(texto).filter((c) => motivoInvalido(c.valor) !== null).length;
     ok(n === invalidos, `frontmatter entero "${nombre}": esperaba ${invalidos} inválidos y dio ${n}`);
@@ -299,7 +351,7 @@ function autoTest() {
 
   const total =
     FRONTMATTER_INVALIDO.length + FRONTMATTER_VALIDO.length + ACOPLADO.length + DESACOPLADO.length +
-    FRONTMATTER_ENTERO.length;
+    FRONTMATTER_ENTERO.length + 5;
   return { fallas, total };
 }
 
@@ -360,6 +412,12 @@ function verificar() {
     for (const d of declarados) {
       ok(!existsSync(join(RAIZ, c, d)), `${c}: declara que falta "${d}" pero existe: sacalo de faltan_en_origen`);
     }
+  }
+
+  for (const [skill, que, pedido] of REQUISITOS) {
+    if (!carpetas.includes(skill)) { ok(false, `${skill}: falta la carpeta`); continue; }
+    const f = faltantes(textoDe(skill), pedido);
+    ok(f.length === 0, `${skill}: ${que} — falta ${f.join(', ')}`);
   }
 
   //  Sólo a la genérica se le exige no nombrar nada de ningún proyecto. Las otras dos viajan

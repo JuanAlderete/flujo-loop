@@ -3,6 +3,8 @@ name: test-driven-development
 description: Use when implementing any feature or bugfix, before writing implementation code
 ---
 
+Talk to the person in their own language (the one they write to you in), whatever language this skill is written in. They may not read English or code.
+
 # Test-Driven Development (TDD)
 
 ## Overview

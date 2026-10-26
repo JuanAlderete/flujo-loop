@@ -87,6 +87,10 @@ el commit nuevo, y recién ahí se regeneran los hashes.
 Buscar palabras sueltas no alcanza: una instrucción peligrosa se puede escribir de mil formas.
 La revisión se hace **leyendo con intención**, y se deja escrito qué se leyó y qué se encontró.
 
+Corré **`skill-scanner`** cada vez que entra o se actualiza una skill de afuera. Su salida son
+**pistas para leer, no un aprobado**: no reemplaza la lectura de cada archivo (chequeo 1), la
+acompaña.
+
 ### 9 · ¿Queda registro? (AST09 · sin gobernanza)
 
 Qué skills hay, de dónde vino cada una, en qué commit y quién la revisó. Eso vive en el

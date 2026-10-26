@@ -58,21 +58,25 @@ reales sin saberlo es el accidente más fácil de cometer.
 
 ## Paso 0 · ¿Este proyecto declara sus controles?
 
-Antes de escribir nada, mirá si el proyecto tiene un `CLAUDE.md` que diga **cuáles son sus
-controles** — el comando que corre los tests, el que revisa tipos, el que revisa estilo, lo que
-sea que este proyecto use para saber que no rompió nada.
+Antes de escribir nada, mirá si el proyecto tiene un `AGENTS.md` o un `CLAUDE.md` que diga
+**cuáles son sus controles** — el comando que corre los tests, el que revisa tipos, el que revisa
+estilo, lo que sea que este proyecto use para saber que no rompió nada. Mirá los dos: cada
+herramienta lee uno distinto, y el proyecto puede tener las reglas en cualquiera.
 
 **Si los declara**: leelo y seguí al paso 1. Esos son los controles, no los que vos supongas.
 
-**Si no los declara, o no hay `CLAUDE.md`**, construilo antes de seguir:
+**Si no los declara, o no hay ninguno de los dos archivos**, construilo antes de seguir:
 
-1. Corré **`/init`**, que genera un `CLAUDE.md` leyendo el proyecto.
+1. Si el proyecto ya tiene un archivo de reglas (`AGENTS.md` o `CLAUDE.md`), se escribe ahí.
+   Sólo si no hay ninguno, corré **`/init`**, que genera un `CLAUDE.md` leyendo el proyecto.
 2. Buscá los candidatos a control: los comandos que el proyecto ya define para sí mismo, qué
    herramienta de tests hay, si hay revisión de estilo o de tipos.
 3. **Proponelos y esperá confirmación**, una sola pregunta: *"encontré estos comandos, ¿son los
    controles de este proyecto?"*. No inventes la lista y sigas: si la persona no lee código, no
    va a poder corregirte después.
-4. Escribí la respuesta en el `CLAUDE.md`.
+4. Escribí la respuesta en el archivo de reglas que el proyecto ya tiene, no en uno nuevo. Dos
+   archivos de reglas, cada uno leído por una herramienta distinta, es justo el error que esto
+   evita: lo que se escribe en el que no corresponde, la otra herramienta no lo ve.
 
 ⚠️ **Por qué esto es un paso y no una nota al pie**: "el proyecto no declara controles" se lee
 igual que "el proyecto no tiene controles". Si arrancás sin resolverlo, vas a terminar reportando
@@ -185,6 +189,16 @@ Antes de presentar, además de los controles:
      o un rol leídos de ahí los controla el atacante.
 2. **Si sumaste, copiaste o actualizaste una skill: `/seguridad-de-skills`.** Una skill es
    comportamiento, no documentación, y la de afuera entra sin que nadie la lea si no se frena acá.
+   Ahí adentro corre `skill-scanner`, cada vez que entra o se actualiza una skill de afuera.
+3. **Tres revisiones sueltas, y cuándo corre cada una.** Las decide el contenido del cambio, no
+   tu criterio del momento:
+   - **`gha-security-review`** si el cambio toca `.github/workflows/`.
+   - **`secret-serialization`** si el cambio agrega un campo que guarda credenciales, o código
+     que convierte objetos enteros a texto (logs, respuestas, mensajes de error).
+   - **`skill-scanner`** dentro de `/seguridad-de-skills`, como se dijo arriba.
+
+   Lo que devuelven son pistas para leer, no un aprobado: lo que dicen va al rastro con lo que
+   se encontró, aunque sea nada.
 
 Al rastro va qué categorías revisaste y **qué encontraste en cada una, aunque sea nada**. "Se
 revisó la seguridad" sin el detalle es un tilde, no una prueba.
