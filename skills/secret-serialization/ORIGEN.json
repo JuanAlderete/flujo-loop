@@ -1,0 +1,15 @@
+{
+  "fuente": "https://github.com/getsentry/skills",
+  "ruta": "skills/secret-serialization",
+  "commit": "473d2594cd91c96ac8348f297e016b631e842487",
+  "copiado": "2026-10-19",
+  "licencia": "Apache-2.0 (getsentry/skills).",
+  "actualizar": "Leer el diff entero contra el commit nuevo y regenerar estos hashes.",
+  "sha256": {
+    "SKILL.md": "fcff1bc1e5f38bdbe9dccccd21a39846bd45e2423307fda971c9cc1e53a39d3b",
+    "SOURCES.md": "f69fa9c62580bb8b2e1a6e37452aed01a06401c97566d3569f95c624532d79d0",
+    "SPEC.md": "451a87e0aaa66fe83114f5b8b49ed73db32b062ebbc9dcaeef9939a229c4e7e2",
+    "references/javascript-typescript.md": "14d6a47cf0c36d4a724381ef43f76549ffddb9c4bd5c4648b39b7ec6a732e1b0",
+    "references/python.md": "d5e9b673d8ef8dada8d5d18403a8e74cca5e2f7c98c5d7ae1a2135716ef3f2b6"
+  }
+}

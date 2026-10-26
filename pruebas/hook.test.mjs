@@ -105,6 +105,11 @@ caso('con marcador inyecta el procedimiento', () => {
   const ctx = j.hookSpecificOutput?.additionalContext ?? '';
   afirmar(ctx.includes('flujo-loop'), 'el contexto no nombra la skill');
   afirmar(/grilling/.test(ctx), 'el contexto no nombra el primer paso');
+  //  Orden del dueño: las skills se PROPONEN (la persona no sabe que existen) y se EJECUTAN,
+  //  nunca se leen para hacer a mano lo que dicen. Tiene que estar en cada mensaje, no sólo en
+  //  la skill, porque el modo de falla es justamente no abrirla.
+  afirmar(/propon[eé]/i.test(ctx), 'el contexto no pide proponer skills');
+  afirmar(/nunca/i.test(ctx) && /interpret/i.test(ctx), 'el contexto no prohíbe interpretar una skill');
 });
 
 caso('entrada mal formada no revienta', () => {
@@ -180,8 +185,12 @@ caso('🔑 Stop sin control de versiones FALLA ABIERTO', () => {
 //  de la suite sólo probaba esos dos, así que sacarle el filtro de evento SOBREVIVÍA a los 13
 //  casos — con el hook tratando cualquier evento como si fuera el de cierre. Si alguien lo
 //  cableara a un evento que dispara a mitad del turno, cortaría el turno.
+//
+//  PreToolUse sigue en la lista aunque ahora atiende el guardrail de git: lo que se fija acá es
+//  que NO bloquee por trabajo sin rastro, como si fuera el cierre. Lo que sí bloquea lo prueban
+//  los casos del guardrail, más abajo.
 for (const evento of ['PostToolUse', 'PreToolUse', 'SessionStart', 'SubagentStop', 'Notification']) {
-  caso(`🔑 ${evento} no bloquea nunca`, () => {
+  caso(`🔑 ${evento} no bloquea por trabajo sin rastro`, () => {
     const d = repo(`evento-${evento}`);
     writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
     const r = correr(evento, d);
@@ -214,6 +223,89 @@ caso('el marcador solo no cuenta como cambio', () => {
   writeFileSync(join(d, '.flujo-loop'), 'marcador\n');
   const r = correr('Stop', d);
   afirmar(r.code === 0, `agregar el marcador no es trabajo sin rastro, dio ${r.code}`);
+});
+
+// ── PreToolUse: el guardrail de git ───────────────────────────────────────────
+//
+//  🔑 Los dos modos de falla, al revés que en el Stop: dejar pasar un `reset --hard` le borra el
+//  trabajo a alguien que no lee código y no sabe que existía; y bloquear de más —un mensaje de
+//  commit que dice "push"— lo vuelve ruido, y el ruido se desinstala. Por eso hay tantos casos
+//  de lo que NO se bloquea como de lo que sí.
+
+function herramienta(dir, comando, tool = 'Bash') {
+  const r = spawnSync(process.execPath, [HOOK], {
+    input: JSON.stringify({ hook_event_name: 'PreToolUse', tool_name: tool, tool_input: { command: comando } }),
+    cwd: dir,
+    env: { ...process.env, CLAUDE_PROJECT_DIR: dir },
+    encoding: 'utf8',
+  });
+  return { code: r.status, err: r.stderr || '' };
+}
+
+const PELIGROSOS = [
+  'git push',
+  'git push --force origin principal',
+  'git -C otra/carpeta push',
+  'git reset --hard',
+  'git reset --hard HEAD~1',
+  'git clean -fd',
+  'git clean -f',
+  'git branch -D vieja',
+  'git branch --delete --force vieja',
+  'git checkout .',
+  'git checkout -- .',
+  'git restore .',
+  'git status && git reset --hard',
+];
+
+const SEGUROS = [
+  'git status',
+  'git commit -m "arregla el boton de push"',
+  //  Un separador ADENTRO de las comillas no corta el comando: sin respetarlas, esto se leería
+  //  como dos comandos y el segundo sería un push.
+  'git commit -m "primero esto; git push despues"',
+  'git log --grep push',
+  'git checkout -b nueva',
+  'git restore algo.txt',
+  'git branch -d mergeada',
+  'git clean -n',
+  'echo "git push"',
+  'npm run entregar',
+];
+
+caso('🔑 PreToolUse bloquea cada comando destructivo de git', () => {
+  const d = repo('guardrail-bloquea');
+  for (const c of PELIGROSOS) {
+    const r = herramienta(d, c);
+    afirmar(r.code === 2, `"${c}" tenía que bloquearse y dio ${r.code}`);
+    afirmar(r.err.includes(c.split(' && ').pop()), `el mensaje no nombra el comando: ${r.err}`);
+  }
+});
+
+caso('🔑 PreToolUse bloquea igual por PowerShell', () => {
+  const d = repo('guardrail-powershell');
+  const r = herramienta(d, 'git reset --hard', 'PowerShell');
+  afirmar(r.code === 2, `por PowerShell tenía que bloquearse y dio ${r.code}`);
+});
+
+caso('🔑 PreToolUse NO bloquea lo que sólo se parece', () => {
+  const d = repo('guardrail-seguros');
+  for (const c of SEGUROS) {
+    const r = herramienta(d, c);
+    afirmar(r.code === 0, `"${c}" no tenía que bloquearse y dio ${r.code}: ${r.err}`);
+  }
+});
+
+caso('PreToolUse sin marcador no bloquea nada', () => {
+  const d = repo('guardrail-sin-marcador', { marcador: false });
+  const r = herramienta(d, 'git reset --hard');
+  afirmar(r.code === 0, `sin marcador no tiene que actuar, dio ${r.code}`);
+});
+
+caso('PreToolUse de otra herramienta no se mira', () => {
+  const d = repo('guardrail-otra');
+  const r = herramienta(d, 'git reset --hard', 'Read');
+  afirmar(r.code === 0, `no es un comando, dio ${r.code}`);
 });
 
 // ── Salida ────────────────────────────────────────────────────────────────────

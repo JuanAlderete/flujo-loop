@@ -1,0 +1,22 @@
+{
+  "fuente": "https://github.com/microsoft/hve-core",
+  "ruta": ".github/skills/security/owasp-top-10",
+  "commit": "1bf0c2bf858692f9122807f59b20b4f7d9d5b677",
+  "copiado": "2026-10-19",
+  "licencia": "Contenido: CC BY-SA 4.0 (OWASP Foundation), con la atribución de su SKILL.md. Repo de origen: MIT.",
+  "actualizar": "Leer el diff entero contra el commit nuevo antes de copiar, y regenerar estos hashes.",
+  "sha256": {
+    "SKILL.md": "e03f52f354f2238d1fe09011e1ada803f7d375ddf1a4798c59310e46b02a55a5",
+    "references/00-vulnerability-index.md": "009e7a4a1d5c3b12a2b0da4444f21af5173bf59f0b539c747b32dda1a9f48e2e",
+    "references/01-broken-access-control.md": "bcb4a9fcbf2faf6c3f93dd2d4c74a9e586eb62a6346de5367d482ed7de0bb165",
+    "references/02-security-misconfiguration.md": "2a16d71a1767c351ce71da6a2ab8e837628f4834d94c127a8af9d3ce90c05d07",
+    "references/03-software-supply-chain-failures.md": "2a2609e983cd30a3fdba82b155dc8e974d4ca7e7f57732036b56d1e715d099e1",
+    "references/04-cryptographic-failures.md": "d39f13fba30d4070296619dd05b96c9f6476d75d37e52be7178b7f924ef46793",
+    "references/05-injection.md": "c820f078baf2756d6c13a5193bd10bf7822df14470942a0dfb6508d6dfd4c553",
+    "references/06-insecure-design.md": "050e1346d4a80a2af7136ce734a513bf6441b0b587f9648201fcfa8d98613b02",
+    "references/07-authentication-failures.md": "563099d38940fee8e0daf9edf2496bb0c8b84f05e00cb31eb0b32d77c42480fc",
+    "references/08-software-data-integrity-failures.md": "25b0c8b0c2ce9d7550d93d709eadcba29a0db6decf036930fd07fd5dbfa95348",
+    "references/09-security-logging-alerting-failures.md": "80d99f9de74c77f5dcd9fc3bd6bf5151f90b094fcc65c3f40d30ea2a593e60f3",
+    "references/10-mishandling-exceptional-conditions.md": "e02a46f381f7499ddfe62b61ce8473adbeb39c0930bede6b9bca8ee188671cba"
+  }
+}

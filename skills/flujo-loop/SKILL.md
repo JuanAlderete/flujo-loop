@@ -14,7 +14,7 @@ No son las reglas del proyecto ni su arquitectura — eso lo declara cada proyec
 La persona que te pide esto **probablemente no lee código**. Va a probar la app, mirar lo que le
 contás, y aprobar o rechazar. Después **otra persona audita el trabajo**.
 
-Eso cambia dos cosas en cómo trabajás, y no son cosméticas:
+Eso cambia cuatro cosas en cómo trabajás, y no son cosméticas:
 
 1. **No podés delegarle una decisión técnica disfrazada de pregunta.** "¿Uso un índice parcial o
    compuesto?" no es una pregunta que pueda contestar. Decidilo y explicá la consecuencia en
@@ -23,6 +23,15 @@ Eso cambia dos cosas en cómo trabajás, y no son cosméticas:
 2. **Nadie va a revisar tu trabajo mirando el diff, al menos no en el momento.** Así que la
    prueba de que algo funciona **tiene que quedar escrita**, no demostrada en el aire. Ese es el
    punto de este procedimiento entero.
+
+3. **No sabe qué skills existen, así que las proponés vos.** Cuando una skill sirve para lo que
+   está pidiendo —revisar la seguridad, entender un mensaje, empezar una tarea—, proponela por
+   su nombre y con una frase de para qué sirve, antes de arrancar a mano. Guiarla hacia las
+   herramientas que existen es parte del trabajo: sola no las va a encontrar.
+4. **Y cuando se habla de una skill, la EJECUTÁS.** Con su comando, directamente. **Nunca** la
+   leés para interpretarla y hacer vos lo que dice: eso es hacer de memoria lo que la skill
+   hace con un procedimiento, y te saltea justo lo que no se te ocurre. Vale para todas, sin
+   excepción, y vale aunque la hayas propuesto vos.
 
 🔑 **El objetivo de todo esto es que auditar tu trabajo sea LEER en vez de RE-DERIVAR.** Si el
 que audita tiene que reconstruir por su cuenta lo que hiciste para saber si está bien, no dejaste
@@ -131,6 +140,54 @@ que vale es lo que corriste vos y viste.
 corrieron.** Si el que se cortó era ajeno a tu cambio, corré a mano los que quedaron colgados. Un
 reporte que dice "los controles fallaron" cuando en realidad **cuatro de seis nunca se
 ejecutaron** es un reporte falso, aunque suene pesimista.
+
+## Paso 5 · La última puerta: se presenta una sola vez, terminado
+
+El cambio se presenta para revisión **una sola vez, cuando está terminado y listo para salir**.
+No en el medio: resolver un punto, presentarlo, y seguir con el siguiente.
+
+Por qué no es una preferencia: cada presentación dispara los controles que corren en el servidor,
+y esos **se pagan** y **se acaban**. Cuando se acaban, no corre ninguno hasta que se renuevan —
+y lo que se presente mientras tanto pasa sin compuerta. Ya pasó: se agotaron en días, por
+presentar de a pedacitos.
+
+Lo que cambia en cómo trabajás:
+
+- **Mientras tanto, guardás y probás en local.** Las unidades de trabajo se guardan chicas y
+  revisables cada una por su cuenta; el tamaño se cuida **por unidad**, no por presentación. Una
+  presentación con una tarea entera es grande, y eso es lo esperado.
+- **Los controles corren en tu máquina antes de presentar**, en el entorno que el proyecto
+  declara. Si el proyecto deja una constancia de que corrieron, la dejás.
+
+Antes de presentar, además de los controles:
+
+1. **La revisión de seguridad del cambio.** Ejecutá **`/sentry-security-review`** sobre el cambio
+   entero: es el procedimiento — seguir el dato desde donde entra antes de acusar, y reportar lo
+   que se confirmó, no lo que se parece a un patrón. Y cargá la skill `owasp-top-10` con tu
+   herramienta de skills (no tiene comando con barra: es una base de consulta) para revisar el
+   cambio contra sus diez categorías. Sumale las reglas de seguridad que declare el proyecto: las
+   suyas ganan, porque saben cosas que una lista general no sabe. Si tocás acceso, permisos,
+   credenciales o plata, esta revisión va **también al empezar**, no sólo al final.
+
+   ⚠️ **Tres reglas de ese procedimiento no valen acá, y ganan estas.** Las tres tienen el mismo
+   origen: en una app donde conviven varias empresas o varios usuarios con datos propios, **el
+   atacante más probable YA está autenticado** — es alguien de otra empresa intentando ver o
+   tocar lo que no es suyo.
+
+   - Dice que no se reporte lo que sólo se alcanza estando autenticado. **Se reporta siempre.**
+   - Dice que buscar un registro por su identificador es seguro. **Es seguro contra inyección,
+     no contra acceso ajeno.** Una búsqueda por identificador que no se limita a la empresa o al
+     usuario actual —o que confía en que otra capa lo limita sin verificarlo— se reporta. Y una
+     regla de acceso de la base que deja pasar todo, o que está apagada porque "lo chequea la
+     app", también: no es configuración, es el control.
+   - Dice que los datos firmados de la sesión son confiables. **Firmado no es lo mismo que no
+     editable**: si el usuario puede escribir ese dato (su perfil, sus preferencias), una empresa
+     o un rol leídos de ahí los controla el atacante.
+2. **Si sumaste, copiaste o actualizaste una skill: `/seguridad-de-skills`.** Una skill es
+   comportamiento, no documentación, y la de afuera entra sin que nadie la lea si no se frena acá.
+
+Al rastro va qué categorías revisaste y **qué encontraste en cada una, aunque sea nada**. "Se
+revisó la seguridad" sin el detalle es un tilde, no una prueba.
 
 ---
 

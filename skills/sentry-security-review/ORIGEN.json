@@ -1,0 +1,59 @@
+{
+  "fuente": "https://github.com/getsentry/skills",
+  "ruta": "skills/security-review",
+  "commit": "3482d8dd35315adf34607f1c12bf793e14890bfe",
+  "copiado": "2026-10-19",
+  "licencia": "Apache-2.0 (getsentry/skills). Material de referencia derivado del OWASP Cheat Sheet Series, CC BY-SA 4.0: ver LICENSE.",
+  "modificaciones": {
+    "archivo": "SKILL.md",
+    "sha256_original": "56a0f507ac82d7003f06103b7443472a0c4e6a5007a84f7b4d29b240359d0f9e",
+    "cambios": [
+      {
+        "antes": "name: security-review",
+        "despues": "name: sentry-security-review",
+        "motivo": "Con el nombre original reemplaza en silencio al /security-review que trae Claude Code (docs: \"Your skill replaces the bundled command\"). Es la única línea tocada."
+      },
+      {
+        "antes": "allowed-tools: Read Grep Glob Bash Task",
+        "despues": "allowed-tools: Read Grep Glob",
+        "motivo": "allowed-tools concede esas herramientas sin pedir permiso mientras la skill está activa. El SKILL.md no usa nunca Bash ni Task: Bash aparece sólo en ejemplos de grep de las referencias, que cubre Grep (OWASP AST03, privilegios de más)."
+      }
+    ],
+    "verificar": "Deshacer las dos líneas (cada \"despues\" vuelve a su \"antes\"): el sha256 del archivo tiene que dar sha256_original."
+  },
+  "actualizar": "Leer el diff entero contra el commit nuevo, volver a aplicar la modificación y regenerar estos hashes.",
+  "faltan_en_origen": [
+    "languages/go.md",
+    "languages/rust.md",
+    "languages/java.md",
+    "infrastructure/kubernetes.md",
+    "infrastructure/terraform.md",
+    "infrastructure/ci-cd.md",
+    "infrastructure/cloud.md"
+  ],
+  "faltan_en_origen_motivo": "El SKILL.md de la fuente los nombra y no existen en su repo, en ese commit. No se inventan: el agente simplemente no los encuentra. Cubren lenguajes e infraestructura que estas apps no usan.",
+  "sha256": {
+    "LICENSE": "0fc858d87f467971ee612fc183896257a1c160a1610a443896b33ae4d2a44ef7",
+    "SKILL.md": "72c5dfc39ffb4b618485a9f29c0d7310d0d8b4badd2b95c6123cf7bbc780c966",
+    "infrastructure/docker.md": "84bd49469c5a0cbd42fecdcce752de98cf6821b601dfef6a1920df61f030ae62",
+    "languages/javascript.md": "f4226c82de13da9dec9be7b509932d74a4ade2c8d46b98a078a5b38bf8aa3319",
+    "languages/python.md": "32d0b1304d132fc582320d584d54bbaea566d51700cd16b3f0be723ed834a556",
+    "references/api-security.md": "65b2456b4c5ae0d6d9849eac8196ac03fbefbf88657c5e069a8aa5063dd6afbf",
+    "references/authentication.md": "7bc598cd4af33bb62406f5a0e8ff7adebff83c04e5fb449e6738f96ae0e26be6",
+    "references/authorization.md": "5ccfd579a1eca4d9d374eb00b04ba33cc9a2918e14e5cb7620c136a6feaeffff",
+    "references/business-logic.md": "fc8ec30eb19f73759e8901e58d7ca66fc87035703325cc8a844298102fa6298a",
+    "references/cryptography.md": "1e1301624e0c9b1699e1d95af11df06a67d104ff06443e93711bb656152f364c",
+    "references/csrf.md": "7b57ba0a45a291eee24578af8b0c69515c76e452c33d8c2d717c66ee3bbdda20",
+    "references/data-protection.md": "920b7dfb86dc696002d31022c1f7665ef602dd1ed76f1124ad937d488ce2b381",
+    "references/deserialization.md": "be9946daf389ad594fbc4065246ff334c389da1e2cf593180ca150b0204287fb",
+    "references/error-handling.md": "e12d3c9f713614223ce797935f3a4c2ac1a7f1fcf0ea24e865a1a70efeab4fb9",
+    "references/file-security.md": "a0a001fb79fe9f1169fa3ba523225164744c42d8779341f15d3d0fc349185f2a",
+    "references/injection.md": "d3989e97af773f521170b430a0e629b26c6ff2051cd826fa62a895523f268178",
+    "references/logging.md": "acca4eeebfc451bb62a7c085d1121ffa443e8cd0831548c2ae6f7fc606056cbc",
+    "references/misconfiguration.md": "919c44e309eaa6427a8bb44a2ed645fbf2b46d9dfe86a0fcdb2d084201898390",
+    "references/modern-threats.md": "d2ac69d91ade6df9c4bf89b2be0d203651d1a0cc5a67d03db8013af52c8ffe6b",
+    "references/ssrf.md": "646a8244fa61997b9b4f093169be1af4f94e6a3d04dcae8d426bb821870b2bff",
+    "references/supply-chain.md": "ef3000d91763ccdddfbce2660943c4090b4c16b3b33afe980f4e10947729e1f1",
+    "references/xss.md": "4735df1e581b757b078605fbc27d37e85cfe182c45ab326c9e536c71a930680c"
+  }
+}
