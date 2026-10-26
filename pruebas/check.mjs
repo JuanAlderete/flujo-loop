@@ -223,7 +223,7 @@ const REQUISITOS = [
       /sin\s+que\s+nadie\s+la\s+haya\s+usado/,
     ],
   }],
-  ['flujo-loop', 'pantallas: el checklist propio cubre accesibilidad y celular, sin script de contraste', {
+  ['flujo-loop', 'pantallas: el checklist propio cubre accesibilidad y celular, deja constancia y declara lo no verificable', {
     desde: '### Checklist de accesibilidad', hasta: '## Lo que esta skill NO dice',
     patrones: [
       /\*\*Contraste\*\*/, /\*\*Foco\*\*/, /\*\*Teclado\*\*/,
@@ -231,12 +231,16 @@ const REQUISITOS = [
       /\*\*Zoom\*\*/, /\*\*Desbordes\*\*/,
       /\*\*Botones\*\*[\s\S]{0,200}dedo/,
       /\*\*Navegación\*\*/,
+      /una\s+línea\s+por\s+cada\s+punto[\s\S]{0,200}cumple[\s\S]{0,40}no\s+cumple[\s\S]{0,40}no\s+lo\s+pude\s+mirar/,
+      /no\s+declara\s+un\s+tamaño[\s\S]{0,200}lo\s+que\s+no\s+pude\s+verificar/,
     ],
   }],
   ['flujo-loop', 'el rastro lista el uso de la pantalla y los atajos conocidos (sólo si los hay)', {
     desde: '## El rastro', hasta: '## Cuando alguien encuentra algo',
     patrones: [
       /\| \*\*uso de la pantalla\*\* \|[^\n]*elemento por elemento/,
+      /\| \*\*uso de la pantalla\*\* \|[^\n]*una\s+línea\s+por\s+cada\s+punto\s+del\s+checklist/,
+      /\*\*reporte (en lenguaje )?llano\*\* \|[^\n]*línea de `\/no-entendi`[^\n]*sólo/,
       /\| \*\*atajos conocidos\*\* \|[^\n]*sólo si hay/,
     ],
   }],
@@ -245,6 +249,7 @@ const REQUISITOS = [
     patrones: [
       /\*\*Contenido real o un placeholder honesto\.\*\*[\s\S]{0,400}testimonios/,
       /placeholder que diga que lo es/,
+      /\*\*Contenido real o un placeholder honesto\.\*\*[\s\S]{0,700}cada\s+placeholder\s+que\s+quede[\s\S]{0,200}lo\s+que\s+no\s+pude\s+verificar[\s\S]{0,100}reporte/,
     ],
   }],
   ['flujo-loop', 'el Paso 3 marca los atajos con su límite y cuándo mejorarlos, y marca el que no tiene cuándo', {
@@ -253,6 +258,7 @@ const REQUISITOS = [
       /\*\*Los atajos se marcan\.\*\*[\s\S]{0,300}`atajo:`/,
       /límite[\s\S]{0,200}cuándo mejorarlo/,
       /atajos conocidos/,
+      /\*\*Los atajos se marcan\.\*\*[\s\S]{0,900}nunca\s+puede\s+ser\s+un\s+atajo[\s\S]{0,200}\*\*Debe\*\*[\s\S]{0,100}atajos\s+conocidos/,
       /atajo\s+sin\s+«cuándo»[\s\S]{0,200}se\s+marca\s+como\s+"sin\s+cuándo"[\s\S]{0,120}\*\*Conviene\*\*/,
     ],
   }],
@@ -266,7 +272,11 @@ const REQUISITOS = [
   }],
   ['flujo-loop', 'el Paso 5 hace que el agente ofrezca /no-entendi al cerrar un mensaje largo', {
     desde: '## Paso 5', hasta: '## Las tres pruebas',
-    patrones: [/Ofrecé\s+`\/no-entendi`[\s\S]{0,300}mensaje\s+largo[\s\S]{0,300}sólo\s+en\s+el\s+chat/],
+    patrones: [
+      /Ofrecé\s+`\/no-entendi`[\s\S]{0,300}mensaje\s+largo[\s\S]{0,300}sólo\s+en\s+el\s+chat/,
+      /cualquier\s+mensaje\s+largo/,
+      /el\s+mismo\s+texto,\s+más\s+la\s+línea\s+final\s+de\s+`\/no-entendi`,\s+que\s+va\s+sólo\s+en\s+el\s+chat/,
+    ],
   }],
   ['seguridad-de-skills', 'pide skill-scanner cada vez que entra o se actualiza una skill de afuera', {
     patrones: [/skill-scanner/],

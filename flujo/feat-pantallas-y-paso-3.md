@@ -9,13 +9,17 @@ cada botón, enlace y campo y anota qué hizo, qué pasó y qué errores saliero
 accesibilidad y celular. Para el Paso 3: nada de datos inventados en pantalla (si falta el dato
 real, un placeholder que diga que lo es), un registro de atajos (cada uno con su límite y cuándo
 mejorarlo) y una escalera de "¿hace falta que exista?" con lo que nunca se recorta. Y al final de
-los mensajes largos el agente ofrece `/no-entendi` solo. El rastro suma dos secciones nuevas.
+cualquier mensaje largo el agente ofrece `/no-entendi` solo. El rastro suma dos secciones
+nuevas, y "uso de la pantalla" lleva una línea por cada punto del checklist, aunque todo
+cumpla.
 
 **Debe**
 
 Ninguno.
 
 **Conviene**
+
+Ninguno de los hallazgos de la revisión quedó abierto (ver "La revisión de este cambio"). Queda:
 
 1. **Qué es:** el marcador `atajo:` y la marca "sin cuándo" no los verifica ningún control sobre
    el código del proyecto. **El problema:** dependen de que el agente los siga. **El arreglo:**
@@ -38,9 +42,8 @@ hooks ni el instalador.
 
 - Que un agente real siga las reglas nuevas en una tarea de pantallas: se ve en el rastro de la
   próxima.
-- **La revisión independiente (`/revision-independiente`) no la corrí yo: la va a correr el
-  padre (quien me encargó este cambio) después de mí.** Lo tocan una skill y un prompt, así que
-  no es documentación pura y corresponde.
+- La revisión independiente la corrió un revisor ciego sobre el primer commit (`3843c97`); sus
+  hallazgos se arreglaron en un segundo commit. **El arreglo no se volvió a revisar.**
 - Los chequeos de texto verifican que estén las reglas, no que estén bien escritas ni que se
   entiendan; eso es trabajo de la revisión.
 
@@ -64,6 +67,20 @@ Todo viene de `docs/plan-de-mejoras.md`; donde hay duda, gana la sección 6 ("De
 | 2.8 Va en dos lugares: el Paso 5 (junto al reporte llano, sólo en el chat) y el recordatorio del hook, una línea | El agente ve el recordatorio en cada mensaje; el Paso 5 explica el porqué. `/no-entendi` no se puede invocar por el agente (`disable-model-invocation`), por eso lo *ofrece* |
 | Los patrones de los chequeos van anclados a su subsección o fila y toleran saltos de línea (`\s+`) | Un patrón suelto sobre toda una sección pasa en vacío si la palabra aparece en otro lado; ya mordió en el cambio anterior |
 | README: una frase | Dice que el agente ofrece `/no-entendi` solo |
+
+## La revisión de este cambio
+
+Un revisor ciego, sin ver la conversación, miró el commit `3843c97`: ningún **Debe**. Los seis
+hallazgos y qué pasó con cada uno (el 3 lo verificó el padre antes de pasármelo):
+
+| # | grupo | hallazgo | resultado |
+|---|---|---|---|
+| 1 | Conviene | Un atajo puede ser justo lo que "nunca se recorta" (ej. `atajo: sin validar el campo`) y cumplir la regla de atajos | **Arreglado.** El Paso 3 dice que lo que está en "lo que nunca se recorta" nunca puede ser un atajo: es un hallazgo en **Debe**, no una entrada de "atajos conocidos". Chequeo anclado |
+| 2 | Conviene | El checklist no deja rastro cuando no encuentra nada | **Arreglado.** "uso de la pantalla" lleva una línea por cada punto (cumple / no cumple / no lo pude mirar); si el proyecto no declara tamaño de botones, va a "lo que no pude verificar". Chequeos anclados, y la fila del rastro actualizada |
+| 3 | Conviene | El Paso 5 decía "el mismo texto" y a la vez sumaba una línea sólo del chat; en el hook la oferta colgaba del punto 5 ("sólo al final") | **Arreglado.** "El mismo texto, más la línea final de `/no-entendi`, que va sólo en el chat" (Paso 5 y fila del rastro). En el hook es un párrafo propio, para cualquier mensaje largo; el test verifica que no cuelgue de un punto numerado ni de la última puerta |
+| 4 | Opcional | Un placeholder honesto puede salir sin que nadie lo note | **Arreglado.** Cada placeholder que quede va a "lo que no pude verificar" o al reporte |
+| 5 | Opcional | El chequeo decía "sin script de contraste" y no lo verificaba | **Arreglado.** Se le sacó la afirmación al nombre; no se agregó un chequeo negativo |
+| 6 | Opcional | Contar los atajos con "cuándo" en "Qué hace este cambio" | **Descartado.** El reporte llano se queda corto y sin jerga; los atajos sin "cuándo" (Conviene) y todo lo de "nunca se recorta" (Debe) ya llegan al reporte, y el resto queda en el rastro a propósito |
 
 ## Las tres pruebas
 
@@ -121,6 +138,34 @@ cazar. Se descartó y se rehizo con el cambio comprobado en la línea 117.)
 | `node pruebas/hook.test.mjs` | `OK  26 casos, sin fallas.` (25 antes) |
 | `node pruebas/instalar.test.mjs` | `OK  11 casos, sin fallas.` |
 
+### Segunda pasada: los arreglos de la revisión
+
+RED, con los chequeos ya endurecidos y antes de tocar los textos:
+
+```
+FALLA  5 de 168 chequeos:
+  - flujo-loop: pantallas: el checklist propio cubre accesibilidad y celular, deja constancia y declara lo no verificable — falta /una\s+línea\s+por\s+cada\s+punto[\s\S]{0,200}cumple[\s\S]{0,40}no\s+cumple[\s\S]{0,40}no\s+lo\s+pude\s+mirar/, /no\s+declara\s+un\s+tamaño[\s\S]{0,200}lo\s+que\s+no\s+pude\s+verificar/
+  - flujo-loop: el rastro lista el uso de la pantalla y los atajos conocidos (sólo si los hay) — falta /\| \*\*uso de la pantalla\*\* \|[^\n]*una\s+línea\s+por\s+cada\s+punto\s+del\s+checklist/, /\*\*reporte (en lenguaje )?llano\*\* \|[^\n]*línea de `\/no-entendi`[^\n]*sólo/
+  - flujo-loop: el Paso 3 pide contenido real o un placeholder que diga que lo es — falta /\*\*Contenido real o un placeholder honesto\.\*\*[\s\S]{0,700}cada\s+placeholder\s+que\s+quede[\s\S]{0,200}lo\s+que\s+no\s+pude\s+verificar[\s\S]{0,100}reporte/
+  - flujo-loop: el Paso 3 marca los atajos con su límite y cuándo mejorarlos, y marca el que no tiene cuándo — falta /\*\*Los atajos se marcan\.\*\*[\s\S]{0,900}nunca\s+puede\s+ser\s+un\s+atajo[\s\S]{0,200}\*\*Debe\*\*[\s\S]{0,100}atajos\s+conocidos/
+  - flujo-loop: el Paso 5 hace que el agente ofrezca /no-entendi al cerrar un mensaje largo — falta /cualquier\s+mensaje\s+largo/, /el\s+mismo\s+texto,\s+más\s+la\s+línea\s+final\s+de\s+`\/no-entendi`,\s+que\s+va\s+sólo\s+en\s+el\s+chat/
+FALLA  1 de 26 casos:
+  - el recordatorio manda ofrecer /no-entendi al cerrar un mensaje largo: la oferta de /no-entendi cuelga de un punto numerado
+```
+
+Hallazgo 5 (el nombre del chequeo) no tiene RED: es un nombre, no un patrón.
+
+Mutaciones de esta pasada (sha256, 16 caracteres; restauradas desde una copia fuera del repo). Las tres primeras **no las habría visto** el chequeo de la pasada anterior, porque ninguno de esos patrones existía:
+
+| qué se rompió | antes / durante / restaurado | qué se cayó |
+|---|---|---|
+| en la skill, "es un hallazgo en **Debe**" pasó a **Opcional** (hallazgo 1) | `f4478ae450008457` / `b97237b7c378204c` / `f4478ae450008457` | sólo el chequeo de atajos (1 de 168) |
+| en la skill, "Si el proyecto no declara un tamaño" pasó a "declara" (hallazgo 2) | `f4478ae450008457` / `8b48b76dfa7e7c9d` / `f4478ae450008457` | sólo el chequeo del checklist (1 de 168) |
+| en el hook, "cualquier mensaje largo" pasó a "un mensaje largo" (hallazgo 3) | `9611ccdd1e664051` / `b5f8d5f7dbd3a0af` / `9611ccdd1e664051` | sólo el caso del recordatorio (1 de 26) |
+| en el hook, el párrafo de la oferta pasó a empezar con "6. " (hallazgo 3, el punto numerado) | `9611ccdd1e664051` / `c7670ff0a1f4c67a` / `9611ccdd1e664051` | sólo el caso del recordatorio (1 de 26). Un primer intento con `sed` mal escrito cambió el hash sin cambiar el texto y dio verde: se descartó y se rehízo |
+
+Controles al final de esta pasada: `node pruebas/check.mjs` → `OK  168 chequeos, sin fallas.`; `--self-test` → `OK  40 casos del verificador, sin fallas.`; `node pruebas/hook.test.mjs` → `OK  26 casos, sin fallas.`; `node pruebas/instalar.test.mjs` → `OK  11 casos, sin fallas.` (los conteos no cambian: los patrones nuevos entraron en requisitos que ya existían).
+
 ## Lo que no se pudo verificar
 
 - Que un agente real use la cuarta prueba o el marcador `atajo:`: los chequeos miran el texto
@@ -128,7 +173,7 @@ cazar. Se descartó y se rehizo con el cambio comprobado en la línea 117.)
 - **Hueco de decisión (2.6):** el plan dice que un atajo sin "cuándo" "se marca", pero no
   dónde. Elegí el rastro ("sin cuándo") y el reporte (**Conviene**). Si querías otro lugar,
   cambia una frase.
-- La revisión independiente (ver el reporte): la corre el padre, no yo.
+- Que el arreglo de la revisión esté bien: no se volvió a revisar.
 - Que `/no-entendi` aparezca de verdad al final de los mensajes largos de un agente: sólo se
   verificó que el recordatorio y el Paso 5 lo pidan.
 
@@ -140,5 +185,5 @@ cazar. Se descartó y se rehizo con el cambio comprobado en la línea 117.)
 - [x] 2.6 atajos
 - [x] 2.7 escalera y "nunca se recorta"
 - [x] 2.8 ofrecer `/no-entendi`
-- [ ] Revisión independiente (padre)
+- [x] Revisión independiente del primer commit; hallazgos 1 a 5 arreglados, 6 descartado
 - [ ] Push, PR y merge: no los hago yo
