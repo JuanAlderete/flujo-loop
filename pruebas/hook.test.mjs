@@ -120,6 +120,8 @@ caso('el recordatorio nombra el Paso 0, la última puerta y /seguridad-de-skills
   afirmar(/^5\. .*última puerta/m.test(ctx), 'el contexto no nombra el Paso 5 (la última puerta)');
   afirmar(ctx.includes('/seguridad-de-skills'), 'el contexto no nombra /seguridad-de-skills');
   afirmar(ctx.includes('/revision-independiente'), 'el contexto no nombra /revision-independiente');
+  afirmar(/plata, datos o permisos/.test(ctx), 'el contexto no nombra el segundo revisor (plata, datos o permisos)');
+  afirmar(/sólo docs/.test(ctx), 'el contexto no nombra la excepción de sólo docs');
 });
 
 caso('el recordatorio dice que el rastro abre con el reporte llano, también como mensaje final', () => {

@@ -164,30 +164,53 @@ const REQUISITOS = [
     desde: '## El rastro', hasta: '## Cuando alguien encuentra algo',
     patrones: [/\|---\|---\|\r?\n\| \*\*reporte (en lenguaje )?llano\*\*/i],
   }],
-  ['flujo-loop', 'el Paso 5 corre la revisión independiente: siempre, con segundo revisor en plata/datos/permisos, y docs-only se anota', {
+  ['flujo-loop', 'el Paso 5 corre la revisión independiente: siempre, con segundo revisor en plata/datos/permisos', {
     desde: '## Paso 5', hasta: '## Las tres pruebas',
     patrones: [
       /revision-independiente/,
-      /siempre/i,
+      CERCA('revision-independiente', 'Corre \\*\\*siempre\\*\\*', 300),
       CERCA('segundo revisor', '(plata|datos|permisos)', 300),
-      CERCA('(docs|documentaci[óo]n|texto)', 'revisión no aplicada', 300),
     ],
   }],
-  ['revision-independiente', 'el revisor es nuevo y no vio la conversación; un segundo ciego en plata/datos/permisos', {
+  ['flujo-loop', 'el Paso 5 limita la excepción a la documentación pura y la anota en "Lo que no se revisó"', {
+    desde: '## Paso 5', hasta: '## Las tres pruebas',
+    patrones: [
+      /En la duda, se corre/,
+      CERCA('skills', 'no son documentación', 300),
+      /Lo que no se revisó\*\*:[\s\S]{0,400}revisión no aplicada: cambio de sólo docs/,
+    ],
+  }],
+  ['revision-independiente', 'corre siempre; la excepción es sólo documentación pura, y en la duda se corre', {
+    desde: '## Cuándo corre', hasta: '## Quién revisa',
+    patrones: [
+      /Siempre/,
+      /En la duda, se corre/,
+      CERCA('skills', 'no son documentación', 300),
+      CERCA('plantillas', 'texto de pantalla', 300),
+      /revisión no aplicada: cambio de sólo docs/,
+    ],
+  }],
+  ['revision-independiente', 'el revisor es nuevo, no vio la conversación y puede leer el repo; el segundo es ciego', {
+    desde: '## Quién revisa', hasta: '## Qué le pedís al revisor',
     patrones: [
       CERCA('(subagente|sesión)', 'no vio la conversación', 300),
-      CERCA('segundo revisor', '(plata|datos|permisos)', 400),
-      CERCA('segundo', '(no ve|ciego)', 300),
+      /acceso de lectura al repositorio/,
+      CERCA('segundo revisor', 'no ve lo que dijo el primero', 300),
+      /En la duda, dos/,
+      CERCA('migraciones', 'importes', 400),
+      /unificá/,
+      CERCA('contradic', 'decide la persona', 200),
     ],
   }],
   ['revision-independiente', 'exige caso concreto, leer a quienes usan el código y no inflar la prioridad', {
-    patrones: [/sin un caso concreto no hay hallazgo/i, /llaman|usan|llamadores/i, /prioridad/i],
+    patrones: [/Sin un caso concreto no hay hallazgo/, /a quienes usan el código tocado/, /No inflar la prioridad/],
   }],
-  ['revision-independiente', 'entrega hallazgos Debe/Conviene/Opcional con las cuatro partes y los riesgos que el flujo no nombra', {
+  ['revision-independiente', 'entrega hallazgos Debe/Conviene/Opcional con las cuatro partes, los riesgos nuevos y los descartados al rastro', {
     patrones: [
       /\bDebe\b/, /\bConviene\b/, /\bOpcional\b/,
       /qué es/i, /el problema/i, /el arreglo/i, /qué pasa si no se\s+arregla/i,
-      /variables de entorno/i, /flag/i, /lo que se pidió romper/i,
+      /variables de entorno/i, /detrás de un flag/, /lo que se pidió romper no es un hallazgo/,
+      CERCA('descart', 'rastro', 300),
     ],
   }],
   ['seguridad-de-skills', 'pide skill-scanner cada vez que entra o se actualiza una skill de afuera', {
