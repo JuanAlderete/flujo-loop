@@ -43,7 +43,10 @@ function correr(evento, dir, { sinGit = false } = {}) {
   return { code: r.status, out: r.stdout || '', err: r.stderr || '' };
 }
 
+//  SOLO=texto corre únicamente los casos cuyo nombre lo contiene: la suite entera tarda minutos
+//  (cada caso arma un repo con git) y para probar una mutación alcanza con el caso que la ve.
 function caso(nombre, fn) {
+  if (process.env.SOLO && !nombre.includes(process.env.SOLO)) return;
   corridos++;
   try {
     fn();
@@ -77,6 +80,12 @@ function repo(nombre, { marcador = true, rama = 'trabajo' } = {}) {
   if (rama) git(dir, 'switch', '-q', '-c', rama);
   return dir;
 }
+
+/** Un rastro con los cuatro encabezados que el Stop exige. Sólo la forma: el hook no lee el contenido. */
+const RASTRO_COMPLETO = [
+  '# rastro', '## Reporte en lenguaje llano', 'x', '## Decisiones', 'x',
+  '## Las tres pruebas', 'x', '## Lo que NO se pudo verificar', 'x', '',
+].join('\n');
 
 //  Primero y sin rodeos: sin el hook no hay nada que probar. Si esto viviera al final, un hook
 //  faltante daría trece fallas de casos y habría que leerlas todas para descubrir el motivo.
@@ -189,7 +198,7 @@ caso('Stop con cambios y con rastro no bloquea', () => {
   const d = repo('stop-con-rastro');
   writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
   mkdirSync(join(d, 'flujo'), { recursive: true });
-  writeFileSync(join(d, 'flujo', 'trabajo.md'), '# rastro\n');
+  writeFileSync(join(d, 'flujo', 'trabajo.md'), RASTRO_COMPLETO);
   const r = correr('Stop', d);
   afirmar(r.code === 0, `esperaba 0 y dio ${r.code}`);
 });
@@ -197,7 +206,7 @@ caso('Stop con cambios y con rastro no bloquea', () => {
 caso('Stop con el rastro ya commiteado no bloquea', () => {
   const d = repo('stop-rastro-commiteado');
   mkdirSync(join(d, 'flujo'), { recursive: true });
-  writeFileSync(join(d, 'flujo', 'trabajo.md'), '# rastro\n');
+  writeFileSync(join(d, 'flujo', 'trabajo.md'), RASTRO_COMPLETO);
   writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
   git(d, 'add', '-A');
   git(d, 'commit', '-q', '-m', 'trabajo con rastro');
@@ -338,6 +347,351 @@ caso('PreToolUse de otra herramienta no se mira', () => {
   const r = herramienta(d, 'git reset --hard', 'Read');
   afirmar(r.code === 0, `no es un comando, dio ${r.code}`);
 });
+
+// ── Stop: el rastro tiene que traer sus encabezados ───────────────────────────
+//
+//  Sólo mira que los encabezados ESTÉN, nunca lo que dicen: juzgar el contenido es trabajo de la
+//  revisión independiente. Los cuatro: reporte en lenguaje llano, decisiones, las tres pruebas, y
+//  lo que no se pudo verificar.
+
+/** Un repo con cambios sin commitear y un rastro con el texto dado. */
+function repoConRastro(nombre, texto) {
+  const d = repo(nombre);
+  writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+  mkdirSync(join(d, 'flujo'), { recursive: true });
+  writeFileSync(join(d, 'flujo', 'trabajo.md'), texto);
+  return d;
+}
+
+const ENCABEZADOS = {
+  'Reporte en lenguaje llano': '## Reporte en lenguaje llano',
+  Decisiones: '## Decisiones',
+  'Las tres pruebas': '## Las tres pruebas',
+  'Lo que no se pudo verificar': '## Lo que no se pudo verificar',
+};
+
+Object.keys(ENCABEZADOS).forEach((falta, n) => {
+  caso(`🔑 Stop con el rastro sin "${falta}" BLOQUEA y lo nombra`, () => {
+    const texto = Object.entries(ENCABEZADOS).filter(([k]) => k !== falta).map(([, v]) => `${v}\nx\n`).join('\n');
+    const d = repoConRastro(`stop-falta-${n}`, texto);
+    const r = correr('Stop', d);
+    afirmar(r.code === 2, `esperaba 2 y dio ${r.code}`);
+    afirmar(r.err.includes(`  ${ENCABEZADOS[falta]}\n`), `el mensaje no pide la línea de "${falta}": ${r.err}`);
+    for (const otro of Object.keys(ENCABEZADOS).filter((k) => k !== falta)) {
+      afirmar(!r.err.includes(`  ${ENCABEZADOS[otro]}\n`), `pide "${otro}" que sí está: ${r.err}`);
+    }
+  });
+});
+
+caso('🔑 Stop con el rastro sin ningún encabezado BLOQUEA y los nombra todos', () => {
+  const d = repoConRastro('stop-sin-encabezados', '# rastro\nnada más\n');
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `esperaba 2 y dio ${r.code}`);
+  for (const k of Object.keys(ENCABEZADOS)) afirmar(r.err.includes(`  ${ENCABEZADOS[k]}\n`), `no pide la línea de "${k}": ${r.err}`);
+});
+
+caso('🔑 Stop con las palabras sólo en prosa BLOQUEA', () => {
+  const prosa = 'Acá va el reporte en lenguaje llano, las decisiones, las tres pruebas y lo que no se pudo verificar.\n';
+  const d = repoConRastro('stop-prosa', `# rastro\n${prosa}- Decisiones: ninguna\n`);
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `la prosa no es un encabezado y dio ${r.code}`);
+});
+
+caso('Stop acepta otro nivel de encabezado, mayúsculas, tildes y la variante "no pude verificar"', () => {
+  const texto = [
+    '# Reporte En Lenguaje Llano', '### DECISIONES', '#### las TRES pruebas', '## Lo que no pude verificar',
+  ].join('\nx\n') + '\n';
+  const d = repoConRastro('stop-tolerante', texto);
+  const r = correr('Stop', d);
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.err}`);
+});
+
+caso('🔑 Stop con las palabras dentro de un encabezado más largo BLOQUEA', () => {
+  //  Que la palabra esté en un título no lo vuelve el título pedido.
+  const texto = ['## Notas sobre el reporte en lenguaje llano', '## Mis decisiones', '## Las tres pruebas viejas',
+    '## Lo que no se pudo verificar nunca'].map((h) => `${h}\nx\n`).join('\n');
+  const d = repoConRastro('stop-titulo-largo', texto);
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `esperaba 2 y dio ${r.code}`);
+});
+
+caso('🔑 Stop con el rastro ilegible FALLA ABIERTO', () => {
+  //  Una carpeta donde debería haber un archivo: existe, pero leerlo tira EISDIR.
+  const d = repo('stop-ilegible');
+  writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+  mkdirSync(join(d, 'flujo', 'trabajo.md'), { recursive: true });
+  const r = correr('Stop', d);
+  afirmar(r.code === 0, `si no puede leerlo no bloquea, dio ${r.code}: ${r.err}`);
+});
+
+// ── PreToolUse: el guardrail de producción ────────────────────────────────────
+
+const PRODUCCION = [
+  'supabase db push',
+  'supabase db query --linked "select 1"',
+  'supabase db query -f x.sql --linked',
+  'supabase --linked db query -f x.sql',
+  'supabase migration repair --status applied 123 --linked',
+  'supabase migration repair --linked --status applied 123',
+  'prisma migrate deploy',
+  'npx prisma migrate deploy',
+  'bunx supabase db push',
+  'npx --yes supabase db push',
+  'cd app && supabase db push',
+  'echo listo; prisma migrate deploy | tee log',
+  'supabase db query --linked -f x.sql && echo ok',
+];
+
+const PRODUCCION_SEGURA = [
+  'supabase db query "select 1"',
+  'supabase db query -f x.sql',
+  'supabase migration list --linked',
+  'supabase migration repair --status applied 123',
+  'prisma migrate dev',
+  'supabase db reset',
+  'git commit -m "documenta supabase db push"',
+  'echo "prisma migrate deploy"',
+];
+
+for (const c of PRODUCCION) {
+  caso(`🔑 PreToolUse bloquea producción: ${c}`, () => {
+    const d = repo('prod-bloquea');
+    const r = herramienta(d, c);
+    afirmar(r.code === 2, `tenía que bloquearse y dio ${r.code}`);
+    afirmar(/autorizaci[oó]n/i.test(r.err), `el mensaje no pide autorización: ${r.err}`);
+  });
+}
+
+caso('🔑 PreToolUse NO bloquea lo que sólo se parece a producción', () => {
+  const d = repo('prod-seguros');
+  for (const c of PRODUCCION_SEGURA) {
+    const r = herramienta(d, c);
+    afirmar(r.code === 0, `"${c}" no tenía que bloquearse y dio ${r.code}: ${r.err}`);
+  }
+});
+
+caso('PreToolUse de producción por PowerShell también bloquea', () => {
+  const d = repo('prod-powershell');
+  afirmar(herramienta(d, 'supabase db push', 'PowerShell').code === 2, 'por PowerShell tenía que bloquearse');
+});
+
+caso('PreToolUse de producción sin marcador no bloquea', () => {
+  const d = repo('prod-sin-marcador', { marcador: false });
+  afirmar(herramienta(d, 'supabase db push').code === 0, 'sin marcador no tiene que actuar');
+});
+
+// ── Ronda 1 de la revisión: encabezados con decoración, BOM, bloques de código ──
+
+/** Un rastro completo donde el encabezado `quien` (índice) se escribe con la línea dada. */
+function rastroCon(quien, linea) {
+  const base = Object.values(ENCABEZADOS);
+  return base.map((h, i) => `${i === quien ? linea : h}\nx\n`).join('\n');
+}
+
+caso('Stop con el rastro guardado con BOM no bloquea', () => {
+  //  El BOM tiene que quedar pegado al PRIMER encabezado: delante de '# rastro' no probaría nada.
+  const d = repoConRastro('stop-bom', '\uFEFF' + RASTRO_COMPLETO.replace('# rastro\n', ''));
+  const r = correr('Stop', d);
+  afirmar(r.code === 0, `un BOM al principio no cambia los encabezados, dio ${r.code}: ${r.err}`);
+});
+
+const DECORADOS = [
+  [0, '## 📋 Reporte en lenguaje llano'],
+  [0, '## 1. Reporte en lenguaje llano'],
+  [0, '## **Reporte en lenguaje llano**'],
+  [0, '## Reporte en lenguaje llano:'],
+  [1, '## Decisiones y por qué'],
+  [1, '## Decisiones, y por qué'],
+  [3, '## Lo que NO se pudo verificar ⚠️'],
+  [2, '## Las 3 pruebas'],
+];
+DECORADOS.forEach(([quien, linea], n) => {
+  caso(`Stop acepta el encabezado decorado: ${linea}`, () => {
+    const d = repoConRastro(`stop-decorado-${n}`, rastroCon(quien, linea));
+    const r = correr('Stop', d);
+    afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.err}`);
+  });
+});
+
+caso('🔑 Stop con "Decisionesx" (la palabra pegada a otra) BLOQUEA', () => {
+  const d = repoConRastro('stop-pegada', rastroCon(1, '## Decisionesx'));
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `esperaba 2 y dio ${r.code}`);
+  afirmar(r.err.includes('  ## Decisiones\n'), `no pide Decisiones: ${r.err}`);
+});
+
+caso('🔑 Stop con "Mis decisiones" (el título no arranca con lo pedido) BLOQUEA', () => {
+  const d = repoConRastro('stop-mis', rastroCon(1, '## Mis decisiones'));
+  afirmar(correr('Stop', d).code === 2, 'tenía que bloquear');
+});
+
+caso('🔑 Stop con los cuatro encabezados sólo dentro de un bloque de código BLOQUEA', () => {
+  const dentro = '```\n' + Object.values(ENCABEZADOS).join('\nx\n') + '\n```\n';
+  const d = repoConRastro('stop-cercado', `# rastro\n${dentro}`);
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `un ejemplo dentro de un cerco no es un encabezado, dio ${r.code}`);
+});
+
+caso('Stop vuelve a mirar los encabezados después de cerrar el bloque de código', () => {
+  const texto = '```\n## ejemplo\n```\n' + RASTRO_COMPLETO;
+  const d = repoConRastro('stop-despues-del-cerco', texto);
+  afirmar(correr('Stop', d).code === 0, 'los encabezados de después del cerco cuentan');
+});
+
+caso('el mensaje del Stop imprime las líneas exactas aceptadas y avisa que son de #', () => {
+  const d = repoConRastro('stop-mensaje', '# rastro\n');
+  const r = correr('Stop', d);
+  for (const linea of Object.values(ENCABEZADOS)) {
+    afirmar(r.err.includes(linea), `no imprime la línea "${linea}": ${r.err}`);
+  }
+  afirmar(/setext/i.test(r.err), `no avisa que el subrayado con === no se acepta: ${r.err}`);
+});
+
+// ── Ronda 1: el guardrail de producción, más difícil de esquivar ──────────────
+
+const PRODUCCION_RONDA_1 = [
+  'supabase --workdir x db push',
+  'supabase -p x db push',
+  'prisma --schema x.prisma migrate deploy',
+  'npx prisma@5 migrate deploy',
+  'npx supabase@latest db push',
+  'pnpm dlx supabase db push',
+  'yarn dlx prisma migrate deploy',
+  'supabase.ps1 db push',
+  'bash -c "supabase db push"',
+  "sh -c 'prisma migrate deploy'",
+  'sudo bash -lc "supabase db push"',
+  '(supabase db push)',
+  'echo $(supabase db push)',
+  'echo `supabase db push`',
+  'supabase db \\\npush',
+  'FOO=1 supabase db push',
+  'env FOO=1 supabase db push',
+  'sudo supabase db push',
+  'supabase db query --linked=true "select 1"',
+  'supabase migration repair --linked=si --status applied 1',
+  //  Fijado a propósito: una línea de un heredoc que ES el comando se lee como comando. Falla
+  //  del lado seguro (bloquea de más, nunca de menos); el techo está dicho en el código.
+  'cat <<EOF\nsupabase db push\nEOF',
+  //  El mismo envoltorio vale para git.
+  'bash -c "git push"',
+];
+
+const PRODUCCION_SEGURA_RONDA_1 = [
+  'echo supabase db push',
+  'grep -rn supabase db push docs',
+  'supabase db push --dry-run',
+  'supabase db push --help',
+  'supabase db push -h',
+  'prisma migrate deploy --help',
+  'bash -c "echo supabase db push"',
+  'git log --grep "supabase db push"',
+];
+
+PRODUCCION_RONDA_1.forEach((c, n) => {
+  caso(`🔑 PreToolUse bloquea (ronda 1): ${c.replace(/\n/g, '⏎')}`, () => {
+    const d = repo(`prod-r1-${n}`);
+    const r = herramienta(d, c);
+    afirmar(r.code === 2, `tenía que bloquearse y dio ${r.code}`);
+  });
+});
+
+caso('🔑 PreToolUse NO bloquea lo que no es el comando (ronda 1)', () => {
+  const d = repo('prod-r1-seguros');
+  for (const c of PRODUCCION_SEGURA_RONDA_1) {
+    const r = herramienta(d, c);
+    afirmar(r.code === 0, `"${c}" no tenía que bloquearse y dio ${r.code}: ${r.err}`);
+  }
+});
+
+
+// ── Ronda 2: el guardrail busca el programa en cualquier lugar, salvo en comandos de sólo texto ──
+
+const PRODUCCION_RONDA_2 = [
+  'if true; then supabase db push; fi',
+  'for f in a; do supabase db push; done',
+  '{ supabase db push; }',
+  '! supabase db push',
+  'pnpm supabase db push',
+  'yarn prisma migrate deploy',
+  'npm exec -- supabase db push',
+  'npm run supabase -- db push',
+  'time supabase db push',
+  'timeout 5 supabase db push',
+  'nohup supabase db push',
+  'xargs supabase db push',
+  'sudo -u me supabase db push',
+  'env -u X supabase db push',
+  'npx.cmd supabase db push',
+  'cmd /c supabase db push',
+  '>out supabase db push',
+  'eval "supabase db push"',
+  "eval 'prisma migrate deploy'",
+];
+
+const SEGURA_RONDA_2 = [
+  'echo supabase db push',
+  'grep -rn supabase db push docs',
+  'rg "supabase db push"',
+  'rg supabase db push',
+  "printf 'supabase db push'",
+  'FOO=1 echo supabase db push',
+  'Write-Host supabase db push',
+  'if true; then echo supabase db push; fi',
+  'eval "echo supabase db push"',
+  //  Ronda 2, punto 5: los paréntesis ya separan comandos; que no frenen a git por eso.
+  'git log --format=(%h)',
+  'git commit -m "fix (x)"',
+];
+
+PRODUCCION_RONDA_2.forEach((c, n) => {
+  caso(`🔑 PreToolUse bloquea (ronda 2): ${c}`, () => {
+    const d = repo(`prod-r2-${n}`);
+    const r = herramienta(d, c);
+    afirmar(r.code === 2, `tenía que bloquearse y dio ${r.code}`);
+  });
+});
+
+caso('🔑 PreToolUse NO bloquea lo de sólo texto ni a git con paréntesis (ronda 2)', () => {
+  const d = repo('prod-r2-seguros');
+  for (const c of SEGURA_RONDA_2) {
+    const r = herramienta(d, c);
+    afirmar(r.code === 0, `"${c}" no tenía que bloquearse y dio ${r.code}: ${r.err}`);
+  }
+});
+
+// ── Ronda 2: cercos de código y límite del título ──
+
+caso('🔑 Stop: un cerco de 4 comillas no lo cierra una línea de 3 (ronda 2)', () => {
+  const texto = '````\n```\n## Decisiones\nx\n````\n' + rastroCon(1, '## Mis notas');
+  const d = repoConRastro('stop-cerco-largo', texto);
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `el ## Decisiones de dentro del cerco no cuenta, y dio ${r.code}`);
+  afirmar(r.err.includes('  ## Decisiones\n'), `no pide Decisiones: ${r.err}`);
+});
+
+caso('🔑 Stop: una línea ```js dentro de un cerco no lo cierra (ronda 2)', () => {
+  //  Los otros tres encabezados van ANTES del cerco: si fueran después, el cerco mal cerrado
+  //  se tragaría todo lo que sigue y el caso bloquearía por casualidad.
+  const otros = Object.entries(ENCABEZADOS).filter(([k]) => k !== 'Decisiones').map(([, v]) => `${v}\nx\n`).join('\n');
+  const texto = otros + '```\n```js\n## Decisiones\nx\n```\n';
+  const d = repoConRastro('stop-cerco-js', texto);
+  afirmar(correr('Stop', d).code === 2, 'el ## Decisiones sigue dentro del cerco');
+});
+
+caso('Stop: el cerco se cierra con una línea del mismo carácter y largo igual o mayor (ronda 2)', () => {
+  const texto = '```\nejemplo\n`````\n' + RASTRO_COMPLETO;
+  const d = repoConRastro('stop-cerco-cierra', texto);
+  afirmar(correr('Stop', d).code === 0, 'tras cerrar el cerco los encabezados cuentan');
+});
+
+for (const [n, titulo] of [['Decisiones2', '## Decisiones2'], ['Decisiones_x', '## Decisiones_x']]) {
+  caso(`🔑 Stop: "${n}" no es "Decisiones" (ronda 2)`, () => {
+    const d = repoConRastro(`stop-limite-${n}`, rastroCon(1, titulo));
+    afirmar(correr('Stop', d).code === 2, 'tenía que bloquear');
+  });
+}
+
 
 // ── Salida ────────────────────────────────────────────────────────────────────
 

@@ -153,7 +153,7 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 
 ## 4. Puntos débiles del propio flujo-loop
 
-1. **El `Stop` acepta un rastro vacío** (`hook.mjs:245`): sólo verifica que el
+1. ~~**El `Stop` acepta un rastro vacío**~~ **Hecho** (`feat/puntos-debiles-grandes`): exige los cuatro encabezados. Original: (`hook.mjs:245`): sólo verifica que el
    archivo exista. Un chequeo barato: que tenga las secciones de las tres pruebas
    y "lo que no se pudo verificar", sin validar su contenido.
 2. **El recordatorio está desfasado** (`hook.mjs:97-113`): enumera los pasos 1 a 4,
@@ -166,10 +166,10 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 5. **`grilling` y `test-driven-development` están en inglés**, así que las preguntas
    pueden llegarle en inglés a quien no programa. Falta pedir que respondan en el
    idioma de la persona.
-6. **El guardrail no frena las escrituras a producción** (`supabase db push`, SQL con
+6. ~~**El guardrail no frena las escrituras a producción**~~ **Hecho** (`feat/puntos-debiles-grandes`): bloquea la lista fija de la sección 6. Original: **El guardrail no frena las escrituras a producción** (`supabase db push`, SQL con
    credenciales). Sólo cubre git, aunque el piso (`SKILL.md:40-55`) dice que eso es
    lo más grave.
-7. **"Arreglá todo en una pasada"** (`SKILL.md:289`) no pone un límite de vueltas
+7. ~~**"Arreglá todo en una pasada"**~~ **Hecho** (`feat/puntos-debiles-grandes`): tope de 2 vueltas en `revision-independiente`. Original: **"Arreglá todo en una pasada"** (`SKILL.md:289`) no pone un límite de vueltas
    ni dice qué hacer si un hallazgo persiste.
 
 ---
@@ -183,7 +183,7 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 4. **2.2, la revisión independiente**: la mejora más grande.
 5. 2.3 y 2.4 (pantallas), juntas.
 6. 2.5, 2.6 y 2.7 (Paso 3), juntas.
-7. Los puntos débiles 1 (rastro vacío), 6 (producción) y 7 (límite de vueltas).
+7. ~~Los puntos débiles 1 (rastro vacío), 6 (producción) y 7 (límite de vueltas).~~ Hecho.
 
 Cada uno con TDD sobre las pruebas de `pruebas/` y su rastro. El `/grilling` del
 plan entero ya se hizo (sección 6); si una pasada abre una decisión que no está
@@ -204,7 +204,7 @@ instala desde `main`, así que lo que se mergea le llega a todos.
 | Revisión independiente (2.2) | Corre **siempre**, con un revisor en un subagente nuevo que no vio la conversación. Si el cambio toca plata, datos o permisos, se suma un segundo revisor ciego. En un cambio de sólo docs se anota "revisión no aplicada" en el reporte | "Sólo en cambios grandes" le pide al agente juzgarse a sí mismo. Así, si clasifica mal, el peor caso es un revisor en vez de dos, nunca cero |
 | Límite de vueltas (débil 7) | Hasta **2 vueltas** de arreglar y revisar. Lo que persiste va al reporte en "Debe", marcado "no se pudo resolver", y decide la persona | Sin límite, el agente da vueltas o declara resuelto lo que no está |
 | Guardrail de producción (débil 6) | **Bloquea**, igual que el de git. Falla abierto sólo ante un error del propio hook. Lista fija de comandos: `supabase db push`, `supabase db query --linked`, `supabase migration repair --linked`, `prisma migrate deploy` | Un aviso lo lee el agente, no la persona. Que cada proyecto declare sus comandos obliga a parsear su archivo de reglas; se suma cuando un proyecto lo pida |
-| `Stop` y el rastro vacío (débil 1) | Exige cuatro encabezados: el reporte llano, las tres pruebas y "lo que no se pudo verificar". No juzga lo que dicen | Es barato y corta el rastro vacío. Juzgar el contenido es trabajo de la revisión independiente |
+| `Stop` y el rastro vacío (débil 1) | Exige cuatro encabezados: el reporte llano, las decisiones, las tres pruebas y "lo que no se pudo verificar" (la lista nombraba tres; el cuarto, "decisiones", es el que la tabla del rastro marca como el por qué). Sólo mira que estén, no lo que dicen | Es barato y corta el rastro vacío. Juzgar el contenido es trabajo de la revisión independiente |
 | Contraste (2.4) | Sólo el checklist propio; **no** se vendoriza el script de Anti-Slop | Sumaría Python, una revisión de seguridad y un `ORIGEN.json` para mantener. Se revisa si aparece un caso real |
 | 2.3 a 2.8 | Tal como están escritos arriba | No tenían decisiones abiertas |
 

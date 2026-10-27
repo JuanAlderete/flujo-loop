@@ -97,13 +97,16 @@ en la lista. Si no aparece, revisá que la carpeta se llame exactamente así y q
 | cuándo | qué |
 |---|---|
 | en cada mensaje tuyo | mete el procedimiento en contexto, así el agente lo tiene sin que nadie lo invoque |
-| cuando el agente va a decir "listo" | no lo deja si hay trabajo sin su archivo de rastro |
+| cuando el agente va a decir "listo" | no lo deja si hay trabajo sin su archivo de rastro, o si el rastro no trae sus cuatro encabezados (reporte en lenguaje llano, decisiones, las tres pruebas, lo que no se pudo verificar). Mira que estén, no lo que dicen: acepta otro nivel de `#`, mayúsculas, tildes, un número o un emoji delante y texto después del título ("Decisiones y por qué"), pero no una palabra suelta, un ítem de lista ni un ejemplo dentro de un bloque de código. Si falta alguno, el mensaje imprime la línea exacta que hay que agregar |
 | antes de que el agente corra un comando | frena los de git que **borran trabajo sin vuelta atrás o lo publican**: `push`, `reset --hard`, `clean -f`, `branch -D`, `checkout .`, `restore .`. Por Bash y por PowerShell. Decide por el subcomando real: un mensaje de commit que dice "push" no se bloquea |
+| ídem, para **producción** | frena `supabase db push`, `supabase db query --linked`, `supabase migration repair --linked` y `prisma migrate deploy`: necesitan la autorización explícita del dueño. Lo detecta en cualquier lugar del comando (detrás de `npx`, `pnpm`, `npm exec`, `sudo`, `time`, `timeout`, `xargs`, `cmd /c`, `if … then`, `eval "…"`…), salvo que el comando empiece con uno de sólo texto (`echo`, `printf`, `grep`, `rg`…). También con una versión (`prisma@5`), con opciones con valor antes del subcomando, dentro de `bash -c "..."`, de `(...)`, de `$(...)` o partido con `\` y salto de línea. No frena `supabase db query` sin `--linked`, `migration list`, `prisma migrate dev`, nada con `--dry-run`/`--help`/`-h`, ni el nombre del comando como argumento de un `echo` o un `grep`. Techo conocido: una línea de un heredoc que es literalmente el comando también bloquea (falla del lado seguro) |
 
 > ⚠️ **El guardrail no es un sandbox.** Un comando disfrazado lo esquiva. Es una red contra el
 > error —el `reset --hard` que borra lo que alguien hizo sin que sepa que existía—, no contra
 > alguien que quiere romper algo a propósito. Si de verdad hace falta uno de esos comandos, lo
 > corre la persona, sabiendo qué hace.
+
+> ⚠️ **Los rastros viejos pueden frenar el cierre.** Si una rama tiene un `flujo/<rama>.md` escrito antes de que el `Stop` exigiera los cuatro encabezados, y se retoma el trabajo en esa rama, el `Stop` lo bloquea hasta que se los agreguen.
 
 Y si un mensaje del agente no se entiende: **`/no-entendi`**. Le pide que lo vuelva a explicar
 más simple, con el contexto que falta y diciendo qué cambia en la app, no en el código. El agente te lo ofrece solo al final de los mensajes largos.
