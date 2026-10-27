@@ -213,6 +213,18 @@ const REQUISITOS = [
       CERCA('descart', 'rastro', 300),
     ],
   }],
+  ['revision-independiente', 'nombra los tres riesgos de datos (reintento con otra clave, EXPLAIN ANALYZE que escribe, índices y VACUUM FULL que traban) y el conteo del encabezado es seis', {
+    desde: '## Qué le pedís al revisor', hasta: '## Qué devuelve',
+    patrones: [
+      /Nombrar seis riesgos/,
+      CERCA('reintent', 'misma clave', 300),
+      CERCA('clave', 'dos veces', 300),
+      CERCA('EXPLAIN ANALYZE', 'ROLLBACK', 300),
+      CERCA('EXPLAIN ANALYZE', 'producción', 300),
+      CERCA('CONCURRENTLY', '[íi]ndice', 200),
+      CERCA('VACUUM FULL', 'rutina', 200),
+    ],
+  }],
   ['revision-independiente', 'tope de 2 vueltas de arreglar y revisar; lo que persiste va a Debe como "no se pudo resolver" y lo decide la persona', {
     desde: '## Cuántas vueltas',
     patrones: [
