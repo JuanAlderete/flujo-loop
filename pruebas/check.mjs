@@ -132,6 +132,8 @@ export function faltantes(texto, { desde, hasta, lineas, patrones }) {
 }
 
 const CERCA = (a, b, n) => new RegExp(`${a}[\\s\\S]{0,${n}}${b}|${b}[\\s\\S]{0,${n}}${a}`);
+/** Frase literal (espacios y saltos de línea equivalentes): ancla también la polaridad. */
+const FRASE = (t) => new RegExp(t.split(' ').map((w) => w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('\\s+'));
 const IDIOMA = /(person's|their) (own )?language|language of the person/i;
 
 /** [skill, qué exige, pedido a `faltantes`]. Ver plan-de-mejoras, secciones 4 y 6. */
@@ -213,16 +215,26 @@ const REQUISITOS = [
       CERCA('descart', 'rastro', 300),
     ],
   }],
-  ['revision-independiente', 'nombra los tres riesgos de datos (reintento con otra clave, EXPLAIN ANALYZE que escribe, índices y VACUUM FULL que traban) y el conteo del encabezado es seis', {
+  ['revision-independiente', 'nombra siete riesgos, tres de ellos de datos, con la polaridad de cada regla anclada a la frase entera', {
     desde: '## Qué le pedís al revisor', hasta: '## Qué devuelve',
     patrones: [
-      /Nombrar seis riesgos/,
-      CERCA('reintent', 'misma clave', 300),
-      CERCA('clave', 'dos veces', 300),
-      CERCA('EXPLAIN ANALYZE', 'ROLLBACK', 300),
-      CERCA('EXPLAIN ANALYZE', 'producción', 300),
-      CERCA('CONCURRENTLY', '[íi]ndice', 200),
-      CERCA('VACUUM FULL', 'rutina', 200),
+      FRASE('Nombrar siete riesgos'),
+      FRASE('en otro motor, buscá el equivalente'),
+      FRASE('lleva la **misma clave de idempotencia** que el primero'),
+      FRASE('rechazar el duplicado por esa clave'),
+      FRASE('con una clave nueva la operación se aplica dos veces'),
+      FRASE('no es una lectura'),
+      FRASE('Escribe de verdad con un `UPDATE`'),
+      FRASE('un `SELECT` que llama a una función con efectos'),
+      FRASE('Va dentro de `BEGIN … ROLLBACK`'),
+      FRASE('no deshace secuencias ni llamadas externas'),
+      FRASE('nunca contra producción sin autorización'),
+      FRASE('sin `CONCURRENTLY`** en una tabla en uso bloquea las escrituras, no las lecturas'),
+      FRASE('`CREATE INDEX CONCURRENTLY` no puede ir dentro de una transacción'),
+      FRASE('índice INVALID que se borra a mano'),
+      FRASE('`REINDEX … CONCURRENTLY` pide PostgreSQL 12'),
+      FRASE('`VACUUM FULL` no es mantenimiento de rutina'),
+      FRASE('bloquea lecturas y escrituras y reescribe la tabla'),
     ],
   }],
   ['revision-independiente', 'tope de 2 vueltas de arreglar y revisar; lo que persiste va a Debe como "no se pudo resolver" y lo decide la persona', {

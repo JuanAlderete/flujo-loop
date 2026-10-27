@@ -50,22 +50,29 @@ peor caso es un revisor en vez de dos, nunca cero.
    específicos y el resultado equivocado que producen. "Podría fallar" no alcanza.
 3. **No inflar la prioridad.** Una duda de estilo no es un "Debe". Mejor un hallazgo bien
    puesto que cinco exagerados: la persona decide con ese orden.
-4. **Nombrar seis riesgos que el resto del flujo no mira:**
+4. **Nombrar siete riesgos que el resto del flujo no mira:**
    - romper el **entorno de desarrollo**: variables de entorno, puertos, secretos que ahora
      hacen falta y no estaban;
    - **fugas de una función que está detrás de un flag**: lo que se ve o se ejecuta aunque el
      flag esté apagado;
    - **lo que se pidió romper no es un hallazgo**: si el pedido era cambiar ese
      comportamiento, que cambie no se reporta;
-   - en los datos, **reintentar una escritura con otra clave**: el reintento de un cobro, un
-     pedido o cualquier cosa que mueva plata o stock tiene que llevar la **misma clave de
-     idempotencia** que el primer intento; con una clave nueva la operación se aplica dos veces;
-   - en los datos, **`EXPLAIN ANALYZE` ejecuta la consulta**: no es una lectura, y sobre un
-     `UPDATE`, `DELETE` o `INSERT` escribe de verdad. Va dentro de `BEGIN … ROLLBACK`, y nunca
-     contra producción sin autorización;
-   - en los datos, **índices y mantenimiento que traban tablas**: crear o reconstruir un índice
-     en una tabla en uso va con `CONCURRENTLY` (si no, bloquea las escrituras mientras corre), y
-     `VACUUM FULL` bloquea la tabla entera: no es mantenimiento de rutina.
+   - **en los datos** (los ejemplos son de PostgreSQL; en otro motor, buscá el equivalente):
+     - **reintentar una escritura con otra clave**: el reintento de un cobro, un pedido o lo
+       que mueva plata o stock lleva la **misma clave de idempotencia** que el primero, y el
+       sistema tiene que rechazar el duplicado por esa clave; con una clave nueva la operación
+       se aplica dos veces;
+     - **`EXPLAIN ANALYZE` ejecuta la consulta**: no es una lectura. Escribe de verdad con un
+       `UPDATE`, `DELETE` o `INSERT`, y con un `SELECT` que llama a una función con efectos. Va
+       dentro de `BEGIN … ROLLBACK` (que no deshace secuencias ni llamadas externas), y nunca
+       contra producción sin autorización;
+     - **crear un índice sin `CONCURRENTLY`** en una tabla en uso bloquea las escrituras, no
+       las lecturas. `CREATE INDEX CONCURRENTLY` no puede ir dentro de una transacción (y casi
+       toda herramienta de migraciones envuelve cada una en una), así que va afuera; si falla a
+       mitad deja un índice INVALID que se borra a mano. `REINDEX … CONCURRENTLY` pide
+       PostgreSQL 12 o más;
+     - **`VACUUM FULL` no es mantenimiento de rutina**: bloquea lecturas y escrituras y
+       reescribe la tabla; el `VACUUM` común no.
 
 ## Qué devuelve y qué hacés con eso
 
