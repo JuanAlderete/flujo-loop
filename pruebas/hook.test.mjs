@@ -605,6 +605,94 @@ caso('🔑 PreToolUse NO bloquea lo que no es el comando (ronda 1)', () => {
 });
 
 
+// ── Ronda 2: el guardrail busca el programa en cualquier lugar, salvo en comandos de sólo texto ──
+
+const PRODUCCION_RONDA_2 = [
+  'if true; then supabase db push; fi',
+  'for f in a; do supabase db push; done',
+  '{ supabase db push; }',
+  '! supabase db push',
+  'pnpm supabase db push',
+  'yarn prisma migrate deploy',
+  'npm exec -- supabase db push',
+  'npm run supabase -- db push',
+  'time supabase db push',
+  'timeout 5 supabase db push',
+  'nohup supabase db push',
+  'xargs supabase db push',
+  'sudo -u me supabase db push',
+  'env -u X supabase db push',
+  'npx.cmd supabase db push',
+  'cmd /c supabase db push',
+  '>out supabase db push',
+  'eval "supabase db push"',
+  "eval 'prisma migrate deploy'",
+];
+
+const SEGURA_RONDA_2 = [
+  'echo supabase db push',
+  'grep -rn supabase db push docs',
+  'rg "supabase db push"',
+  'rg supabase db push',
+  "printf 'supabase db push'",
+  'FOO=1 echo supabase db push',
+  'Write-Host supabase db push',
+  'if true; then echo supabase db push; fi',
+  'eval "echo supabase db push"',
+  //  Ronda 2, punto 5: los paréntesis ya separan comandos; que no frenen a git por eso.
+  'git log --format=(%h)',
+  'git commit -m "fix (x)"',
+];
+
+PRODUCCION_RONDA_2.forEach((c, n) => {
+  caso(`🔑 PreToolUse bloquea (ronda 2): ${c}`, () => {
+    const d = repo(`prod-r2-${n}`);
+    const r = herramienta(d, c);
+    afirmar(r.code === 2, `tenía que bloquearse y dio ${r.code}`);
+  });
+});
+
+caso('🔑 PreToolUse NO bloquea lo de sólo texto ni a git con paréntesis (ronda 2)', () => {
+  const d = repo('prod-r2-seguros');
+  for (const c of SEGURA_RONDA_2) {
+    const r = herramienta(d, c);
+    afirmar(r.code === 0, `"${c}" no tenía que bloquearse y dio ${r.code}: ${r.err}`);
+  }
+});
+
+// ── Ronda 2: cercos de código y límite del título ──
+
+caso('🔑 Stop: un cerco de 4 comillas no lo cierra una línea de 3 (ronda 2)', () => {
+  const texto = '````\n```\n## Decisiones\nx\n````\n' + rastroCon(1, '## Mis notas');
+  const d = repoConRastro('stop-cerco-largo', texto);
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `el ## Decisiones de dentro del cerco no cuenta, y dio ${r.code}`);
+  afirmar(r.err.includes('  ## Decisiones\n'), `no pide Decisiones: ${r.err}`);
+});
+
+caso('🔑 Stop: una línea ```js dentro de un cerco no lo cierra (ronda 2)', () => {
+  //  Los otros tres encabezados van ANTES del cerco: si fueran después, el cerco mal cerrado
+  //  se tragaría todo lo que sigue y el caso bloquearía por casualidad.
+  const otros = Object.entries(ENCABEZADOS).filter(([k]) => k !== 'Decisiones').map(([, v]) => `${v}\nx\n`).join('\n');
+  const texto = otros + '```\n```js\n## Decisiones\nx\n```\n';
+  const d = repoConRastro('stop-cerco-js', texto);
+  afirmar(correr('Stop', d).code === 2, 'el ## Decisiones sigue dentro del cerco');
+});
+
+caso('Stop: el cerco se cierra con una línea del mismo carácter y largo igual o mayor (ronda 2)', () => {
+  const texto = '```\nejemplo\n`````\n' + RASTRO_COMPLETO;
+  const d = repoConRastro('stop-cerco-cierra', texto);
+  afirmar(correr('Stop', d).code === 0, 'tras cerrar el cerco los encabezados cuentan');
+});
+
+for (const [n, titulo] of [['Decisiones2', '## Decisiones2'], ['Decisiones_x', '## Decisiones_x']]) {
+  caso(`🔑 Stop: "${n}" no es "Decisiones" (ronda 2)`, () => {
+    const d = repoConRastro(`stop-limite-${n}`, rastroCon(1, titulo));
+    afirmar(correr('Stop', d).code === 2, 'tenía que bloquear');
+  });
+}
+
+
 // ── Salida ────────────────────────────────────────────────────────────────────
 
 rmSync(BASE, { recursive: true, force: true });

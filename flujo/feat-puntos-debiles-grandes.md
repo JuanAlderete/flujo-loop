@@ -13,7 +13,13 @@ la base de producción (`supabase db push`, `supabase db query --linked`,
 producción siguen pasando. Tres: la revisión independiente tiene un tope de 2 vueltas de arreglar
 y revisar, y lo que siga sin resolverse va a **Debe** como "no se pudo resolver".
 
-Tras la revisión: el aviso del cierre ya no se equivoca con títulos decorados (`## 📋 …`,
+Segunda y última ronda: el guardrail de producción ya no depende de una lista de envoltorios
+(que se quedaba corta: `pnpm supabase db push`, `time`, `timeout`, `xargs`, `{ …; }`,
+`if … then`, `cmd /c`, `eval "…"` se escapaban). Ahora busca el programa en cualquier lugar del
+comando y sólo lo ignora si el comando empieza con uno de sólo texto (`echo`, `grep`, `rg`…). El
+aviso del cierre cierra bien los bloques de código largos y no acepta `Decisiones2`.
+
+Tras la primera ronda: el aviso del cierre ya no se equivoca con títulos decorados (`## 📋 …`,
 `## 1. …`, `## **…**`, "Decisiones y por qué"), con un BOM, ni se deja engañar por un ejemplo
 dentro de un bloque de código; y dice qué líneas exactas agregar. El guardrail de producción ya
 no se esquiva con opciones antes del subcomando, `npx prisma@5`, `bash -c "…"`, `$(…)`, o un
@@ -129,6 +135,25 @@ de `# rastro`, que no es un encabezado pedido: no probaba nada. Lo moví al prim
 pedido y lo comprobé por mutación (abajo). Además, el BOM no necesitaba un `replace`: `\s` ya
 lo cuenta como espacio, así que no agregué código para eso.
 
+**Ronda 2** (casos escritos antes de tocar `hook.mjs`; `SOLO="ronda 2"`):
+
+```
+FALLA  22 de 25 casos:
+  - 🔑 PreToolUse bloquea (ronda 2): if true; then supabase db push; fi: tenía que bloquearse y dio 0
+  - 🔑 PreToolUse bloquea (ronda 2): pnpm supabase db push: tenía que bloquearse y dio 0
+  - 🔑 PreToolUse bloquea (ronda 2): timeout 5 supabase db push: tenía que bloquearse y dio 0
+  - 🔑 PreToolUse bloquea (ronda 2): cmd /c supabase db push: tenía que bloquearse y dio 0
+  - 🔑 PreToolUse bloquea (ronda 2): eval "supabase db push": tenía que bloquearse y dio 0
+  - 🔑 Stop: un cerco de 4 comillas no lo cierra una línea de 3 (ronda 2): no pide Decisiones
+  - 🔑 Stop: "Decisiones2" no es "Decisiones" (ronda 2): tenía que bloquear
+  ... (22 en total)
+```
+
+El caso de ```js estaba en verde por casualidad (el cerco mal cerrado se tragaba el resto y
+bloqueaba igual); lo reescribí con los otros encabezados antes del cerco y ahí sí quedó rojo
+(`el ## Decisiones sigue dentro del cerco`). Los casos de "no bloquea" nuevos (`rg supabase db
+push`, `if true; then echo …`) los agregué después de ver que mutar `rg` y `then` sobrevivía.
+
 ### 2 · Las mutaciones verificadas
 
 Hash = 16 primeros caracteres de sha256, antes / durante / restaurado desde una copia.
@@ -166,13 +191,29 @@ minutos). Mismo formato de hashes; todas se restauraron desde una copia.
 Un primer intento de quitar el `replace` del BOM **sobrevivió** (el caso del BOM siguió en verde): ahí se vio que
 `\s` ya lo cubre, el `replace` sobraba y se borró; la mutación que vale es la de la primera fila.
 
+Ronda 2 (hashes del hook: `312cc5cf3b9ec92e` antes y restaurado):
+
+| qué se rompió | durante | qué se cayó |
+|---|---|---|
+| `grep` fuera de los comandos de sólo texto | `f58224ce0c4b2231` | el caso de lo de sólo texto |
+| `rg` fuera de la lista | `dbd5e7549fd0db90` | primero **sobrevivió** (sólo había `rg "…"`, una palabra); con `rg supabase db push` cae |
+| `then` fuera de las palabras de control | `e37fd699fa2fa85e` | `if true; then echo …` |
+| `eval` ya no se re-lee | `0bda0c8007c3c84b` | 2 casos de `eval` |
+| el cerco ya no pide largo igual o mayor | `5e6058afec7f3624` | el cerco de 4 comillas |
+| el cerco cierra aunque haya texto después | `ab491f2810dbc171` | el caso ```js |
+| límite del título `(?![a-z])` sin dígitos ni `_` | `49566137c3970d3c` | 2 casos (`Decisiones2`, `Decisiones_x`) |
+| el programa sólo se busca en la posición de inicio | `3f0c98a1e2bdee01` | 13 de 25 casos |
+
+Un intento de correr tres mutaciones con un script mal armado (sin definir el ejecutor) dejó un
+proceso colgado esperando entrada; lo detuve y el hook no quedó modificado (verificado por hash).
+
 ### 3 · Los números de los controles
 
 | control | resultado |
 |---|---|
 | `node pruebas/check.mjs` | `OK  171 chequeos, sin fallas.` |
 | `node pruebas/check.mjs --self-test` | `OK  40 casos del verificador, sin fallas.` |
-| `node pruebas/hook.test.mjs` | `OK  88 casos, sin fallas.` (26 al empezar el PR) |
+| `node pruebas/hook.test.mjs` | `OK  113 casos, sin fallas.` (26 al empezar el PR) |
 | `node pruebas/instalar.test.mjs` | `OK  11 casos, sin fallas.` |
 
 ## Lo que NO se pudo verificar
@@ -218,6 +259,31 @@ ciegos** sobre `43bded9`. Hallazgos de la ronda 1 y qué se hizo:
   bloquea en cada `Stop`. No se cambió, a pedido; queda dicho acá.
 
 Decisión del dueño: el cuarto encabezado sigue siendo "Decisiones".
+
+### Ronda 2 (la última)
+
+Un revisor ciego nuevo revisó `607fd72`: el guardrail de git y el `Stop` quedaron sólidos, sin
+regresiones. Encontró que el guardrail de producción **retrocedió** respecto de `43bded9` por la
+lista de "posición de comando" de la ronda 1.
+
+| hallazgo | resultado |
+|---|---|
+| (Debe) la regla de posición de comando dejaba pasar `pnpm supabase db push`, `yarn prisma migrate deploy`, `npm exec`, `npm run … --`, `time`, `timeout`, `nohup`, `xargs`, `sudo -u`, `env -u`, `npx.cmd`, `cmd /c`, `>out …`, `if…then`, `for…do`, `{ }`, `!` | arreglado invirtiendo la regla: se busca el programa en cualquier lugar, salvo que el tramo empiece (tras `VAR=x` y palabras de control) con un comando de sólo texto. La lista de envoltorios desapareció |
+| `eval "…"` no se re-leía | arreglado: se trata como `bash -c` |
+| un cerco de 4 comillas lo cerraba una línea de 3, y ```js lo cerraba | arreglado: cierra sólo una línea del mismo carácter, igual o más larga, sin nada más |
+| `Decisiones2` / `Decisiones_x` pasaban por título | arreglado: el límite excluye también dígitos y `_` |
+| (regresión a vigilar) los paréntesis ahora separan comandos | caso nuevo: `git log --format=(%h)` y `git commit -m "fix (x)"` no bloquean |
+
+**No se arregla, con motivo:**
+
+- **Línea de heredoc que es literalmente el comando:** falla del lado seguro y ya está fijado en un test.
+- **`-h` en cualquier lugar exceptúa:** no se encontró un abuso realista.
+- **Encabezados dentro de `<!-- -->`:** el hook sólo mira que estén; límite aceptado.
+- **`bash -c` anidado a más de tres niveles:** techo de no-es-un-sandbox.
+- **`echo … | sh` y expansión de variables (`$x`):** idem.
+
+**Se llegó al límite de 2 rondas de revisión.** No hay una tercera: cualquier cosa que aparezca
+después de esto va a **Debe** como "no se pudo resolver", y decide la persona.
 
 ## Estado
 

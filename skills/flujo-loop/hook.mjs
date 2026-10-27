@@ -57,17 +57,18 @@ const sinTildes = (t) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLo
 /** Los títulos del rastro, ya normalizados: sin BOM, sin lo que está dentro de un bloque de código. */
 function titulos(texto) {
   const salida = [];
-  let cerco = null; // la marca que abrió el bloque de código, si hay uno abierto
+  let cerco = null; // la marca completa que abrió el bloque de código (``` o ````, ~~~), si hay uno
   //  Un BOM al principio no hace falta quitarlo: `\s` ya lo cuenta como espacio, y el patrón del
   //  encabezado admite espacios delante. Lo fija el caso del BOM.
   for (const linea of texto.split(/\r?\n/)) {
-    const marca = /^\s{0,3}(```+|~~~+)/.exec(linea)?.[1];
-    if (marca) {
-      if (!cerco) cerco = marca[0];
-      else if (marca[0] === cerco) cerco = null;
+    const marca = /^\s{0,3}(`{3,}|~{3,})(.*)$/.exec(linea);
+    if (cerco) {
+      //  Sólo cierra una línea del mismo carácter, igual o más larga, y sin nada más: una línea
+      //  de ``` adentro de un cerco de ```` o un ```js no lo cierran.
+      if (marca && marca[1][0] === cerco[0] && marca[1].length >= cerco.length && marca[2].trim() === '') cerco = null;
       continue;
     }
-    if (cerco) continue;
+    if (marca) { cerco = marca[1]; continue; }
     const m = /^\s{0,3}#{1,6}[ \t]+(.*)$/.exec(linea);
     if (m) salida.push(sinTildes(m[1]).replace(/^[^a-z]+/, ''));
   }
@@ -78,7 +79,7 @@ function titulos(texto) {
 function encabezadosFaltantes(texto) {
   const ts = titulos(texto);
   return ENCABEZADOS.filter(([, re]) => {
-    const r = new RegExp(`^(${re})(?![a-z])`);
+    const r = new RegExp(`^(${re})(?![a-z0-9_])`);
     return !ts.some((t) => r.test(t));
   }).map(([linea]) => linea);
 }
@@ -262,22 +263,17 @@ function peligro(palabras) {
 
 const NOMBRE = (p) => p.split(/[\\/]/).pop().toLowerCase();
 
-/**
- * Dónde está el comando de verdad en un tramo: se saltean las asignaciones (`VAR=valor`) y los
- * envoltorios (`env`, `sudo`, `npx`, `bunx`, `pnpm dlx`, `yarn dlx`) con sus opciones. Devuelve el
- * índice, o el largo si no queda nada. Así `echo supabase db push` no cuenta: el comando es echo.
- */
-function posicionDelComando(palabras) {
+/** Comandos que sólo muestran o buscan texto: lo que llevan de argumento no se ejecuta. */
+const SOLO_TEXTO = new Set(['echo', 'printf', 'grep', 'egrep', 'fgrep', 'rg', 'findstr', 'select-string', 'write-output', 'write-host']);
+const PALABRAS_DE_CONTROL = new Set(['if', 'then', 'else', 'elif', 'do', 'while', 'until', '!', '{', '}']);
+
+/** El nombre de un programa sin ruta, sin `@versión` y sin `.exe`/`.cmd`/`.ps1`. */
+const PROGRAMA = (w) => NOMBRE(w).replace(/@[^@]*$/, '').replace(/\.(exe|cmd|ps1)$/, '');
+
+/** El primer comando de verdad de un tramo: se saltean las asignaciones `VAR=valor` y las palabras de control. */
+function inicioDelComando(palabras) {
   let i = 0;
-  while (i < palabras.length) {
-    const w = palabras[i];
-    if (/^[A-Za-z_]\w*=/.test(w)) { i++; continue; }
-    const n = NOMBRE(w);
-    if (['env', 'sudo', 'npx', 'bunx'].includes(n)) { i++; }
-    else if (['pnpm', 'yarn'].includes(n) && ['dlx', 'exec'].includes(palabras[i + 1])) { i += 2; }
-    else break;
-    while (i < palabras.length && palabras[i].startsWith('-')) i++;
-  }
+  while (i < palabras.length && (/^[A-Za-z_]\w*=/.test(palabras[i]) || PALABRAS_DE_CONTROL.has(palabras[i]))) i++;
   return i;
 }
 
@@ -289,47 +285,56 @@ const contiene = (palabras, sub) =>
  * Comandos que escriben en la base de producción. Lista fija a propósito: que cada proyecto
  * declare los suyos obliga a parsear su archivo de reglas, y eso se suma cuando alguien lo pida.
  *
- * Se mira por palabras sueltas, no por el texto, y sólo si el programa está EN POSICIÓN DE
- * COMANDO (ver `posicionDelComando`): `echo supabase db push` o `grep supabase db push docs` no
- * disparan. El subcomando se busca como secuencia consecutiva entre lo que sigue al programa,
- * así una opción con valor antes (`--workdir x`) no lo esquiva; `npx prisma@5` y los `.exe`,
- * `.cmd`, `.ps1` tampoco. `--linked=lo-que-sea` cuenta como `--linked`. `--dry-run`, `--help`
- * y `-h` no escriben nada, y no se frenan.
+ * Se mira por palabras sueltas, no por el texto. La regla está al revés de lo que parecería: no
+ * se enumeran los envoltorios que pueden llevar el comando (`npx`, `sudo`, `time`, `timeout`,
+ * `xargs`, `pnpm`, `cmd /c`, `{ }`, `if…then`: la lista nunca termina) sino los comandos de SÓLO
+ * TEXTO (`echo`, `grep`, `rg`…), que no ejecutan lo que reciben. Si el tramo no empieza con uno,
+ * el programa se busca en cualquier lugar. El subcomando se busca como secuencia consecutiva,
+ * así una opción con valor antes (`--workdir x`) no lo esquiva; `prisma@5`, `.exe`, `.cmd` y
+ * `.ps1` tampoco. `--linked=lo-que-sea` cuenta como `--linked`. `--dry-run`, `--help` y `-h` no
+ * escriben nada, y no se frenan.
  *
- * ⚠️ Techo conocido: la línea de un heredoc que es literalmente `supabase db push` se lee como un
- * comando y bloquea. Falla del lado seguro (de más, nunca de menos) y está fijado en un test.
+ * ⚠️ Techos conocidos, todos del lado seguro o de "no es un sandbox": la línea de un heredoc que
+ * es literalmente `supabase db push` se lee como un comando y bloquea (de más, nunca de menos);
+ * `echo … | sh`, la expansión de una variable y un `bash -c` anidado a más de tres niveles lo
+ * esquivan.
  */
 function produccion(palabras) {
-  const i = posicionDelComando(palabras);
-  if (i >= palabras.length) return null;
-  const programa = NOMBRE(palabras[i]).replace(/@[^@]*$/, '').replace(/\.(exe|cmd|ps1)$/, '');
-  const resto = palabras.slice(i + 1);
-  if (resto.some((w) => ['--dry-run', '--help', '-h'].includes(w))) return null;
-  const linked = resto.some((w) => w === '--linked' || w.startsWith('--linked='));
-
-  if (programa === 'supabase') {
-    if (contiene(resto, ['db', 'push'])) return 'aplica las migraciones pendientes en la base de producción';
-    if (linked && contiene(resto, ['db', 'query'])) return 'ejecuta SQL contra la base de producción';
-    if (linked && contiene(resto, ['migration', 'repair'])) return 'reescribe el historial de migraciones de producción';
-  }
-  if (programa === 'prisma' && contiene(resto, ['migrate', 'deploy'])) {
-    return 'aplica las migraciones en la base de producción';
+  const i = inicioDelComando(palabras);
+  if (i >= palabras.length || SOLO_TEXTO.has(PROGRAMA(palabras[i]))) return null;
+  for (let k = i; k < palabras.length; k++) {
+    const programa = PROGRAMA(palabras[k]);
+    if (programa !== 'supabase' && programa !== 'prisma') continue;
+    const resto = palabras.slice(k + 1);
+    if (resto.some((w) => ['--dry-run', '--help', '-h'].includes(w))) return null;
+    const linked = resto.some((w) => w === '--linked' || w.startsWith('--linked='));
+    if (programa === 'supabase') {
+      if (contiene(resto, ['db', 'push'])) return 'aplica las migraciones pendientes en la base de producción';
+      if (linked && contiene(resto, ['db', 'query'])) return 'ejecuta SQL contra la base de producción';
+      if (linked && contiene(resto, ['migration', 'repair'])) return 'reescribe el historial de migraciones de producción';
+    } else if (contiene(resto, ['migrate', 'deploy'])) {
+      return 'aplica las migraciones en la base de producción';
+    }
   }
   return null;
 }
 
 /**
- * Los tramos de un comando, y los de lo que corre un `bash -c "..."` (también sh, zsh, dash),
- * hasta tres niveles. Un salto de línea con barra al final es un espacio, no un corte.
+ * Los tramos de un comando, y los de lo que corre un `bash -c "..."` (también sh, zsh, dash) o un
+ * `eval "..."`, hasta tres niveles. Un salto de línea con barra al final es un espacio, no un corte.
  */
 function* segmentos(comando, nivel = 0) {
   for (const palabras of tramos(comando.replace(/\\\r?\n/g, ' '))) {
     yield palabras;
-    const i = posicionDelComando(palabras);
-    if (nivel < 3 && /^(ba|z|da)?sh$/.test(NOMBRE(palabras[i] ?? ''))) {
-      const c = palabras.findIndex((w, k) => k > i && /^-[a-z]*c$/.test(w));
-      if (c >= 0 && palabras[c + 1]) yield* segmentos(palabras[c + 1], nivel + 1);
+    if (nivel >= 3) continue;
+    const i = inicioDelComando(palabras);
+    if (NOMBRE(palabras[i] ?? '') === 'eval') {
+      yield* segmentos(palabras.slice(i + 1).join(' '), nivel + 1);
+      continue;
     }
+    const sh = palabras.findIndex((w) => /^(ba|z|da)?sh$/.test(NOMBRE(w)));
+    const c = sh < 0 ? -1 : palabras.findIndex((w, k) => k > sh && /^-[a-z]*c$/.test(w));
+    if (c >= 0 && palabras[c + 1]) yield* segmentos(palabras[c + 1], nivel + 1);
   }
 }
 
