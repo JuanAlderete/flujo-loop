@@ -196,3 +196,4 @@ la UVA trae fechas futuras.
   22.23 lo corre quitando los tipos.
 - Cómo anda desde un navegador: las cabeceras dicen CORS `*`, pero no se probó desde uno.
 - Las revisiones (independiente, seguridad, judgment-day) no corrieron en este paso.
+- Judgment day, JD-1 arreglado: el `fetch` por defecto de `cotizaciones.ts` llama a `globalThis.fetch` en cada llamada y con el receptor correcto (antes tiraba "Illegal invocation" en el navegador); prueba de regresión en `pruebas/dolarapi.test.mjs` (commit: ver `git log` de "fetch por defecto").

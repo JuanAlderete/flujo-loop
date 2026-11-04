@@ -21,7 +21,8 @@ export type Resultado<T> = { datos: T; actualizado: string; obsoleto: boolean };
 
 /** Sólo para pruebas: reemplazar el `fetch` y el reloj. */
 export const entorno = {
-  fetch: globalThis.fetch as (url: string, init?: object) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>,
+  // Se busca `globalThis.fetch` en cada llamada y con `globalThis` como receptor (en el navegador, un `fetch` suelto tira "Illegal invocation").
+  fetch: ((url, init) => globalThis.fetch(url, init)) as (url: string, init?: object) => Promise<{ ok: boolean; status: number; json(): Promise<unknown> }>,
   ahora: () => Date.now(),
 };
 

@@ -17,6 +17,8 @@
 
 import * as c from '../skills/dolarapi/cotizaciones.ts';
 
+const fetchPorDefecto = c.entorno.fetch; // el de verdad, antes de que los casos lo reemplacen
+
 const fallas = [];
 let corridos = 0;
 const cola = [];
@@ -417,6 +419,31 @@ caso('fechaCorta: "AAAA-MM-DD" se muestra igual, sin correrse un día', () => {
 caso('fuente: la frase exacta que piden los términos de uso', () => {
   igual(c.fuente.dolarapi, 'Fuente: DolarApi (dolarapi.com)');
   igual(c.fuente.argentinadatos, 'Fuente: ArgentinaDatos (argentinadatos.com)');
+});
+
+caso('fetch por defecto: se llama a globalThis.fetch en el momento, con globalThis como receptor', async () => {
+  const original = globalThis.fetch;
+  const guardadoEntorno = { fetch: c.entorno.fetch, ahora: c.entorno.ahora };
+  let llamadasReales = 0;
+  try {
+    c.entorno.fetch = fetchPorDefecto;
+    c.entorno.ahora = () => reloj;
+    c.limpiarCache();
+    // Como el del navegador: tira si no se lo llama con globalThis como receptor. Se instala DESPUÉS de importar.
+    globalThis.fetch = function (url) {
+      if (this !== globalThis && this !== undefined) throw new TypeError('Illegal invocation');
+      llamadasReales++;
+      return Promise.resolve({ ok: true, status: 200, json: async () => structuredClone(DOLARES) });
+    };
+    const r = await c.dolares();
+    igual(llamadasReales, 1, 'llamadas al globalThis.fetch reemplazado:');
+    igual(r.datos.length, 3);
+  } finally {
+    globalThis.fetch = original;
+    c.entorno.fetch = guardadoEntorno.fetch;
+    c.entorno.ahora = guardadoEntorno.ahora;
+    c.limpiarCache();
+  }
 });
 
 // ── Salida ────────────────────────────────────────────────────────────────────
