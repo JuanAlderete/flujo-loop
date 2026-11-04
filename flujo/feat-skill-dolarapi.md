@@ -42,6 +42,10 @@ en todos los proyectos, rápido y con las menos llamadas posibles a la API.
 - [x] T3 · `SKILL.md` + fila en el README + comando de prueba en el README (commit 547034d)
 - [x] T4 · prueba en vivo (un script fuera del repo)
 - [x] T5 · todos los controles
+- [x] T6 · F1 caché envenenada: validar la forma antes de guardar (ruta: escritor delegado; commit 016b34f)
+- [x] T7 · F2 carrera si el fetch tira síncrono: la consulta en vuelo siempre se limpia (commit 016b34f)
+- [x] T8 · F3 enfriamiento de 60 s tras una falla, por URL (commit 016b34f)
+- [x] T9 · F4 SKILL.md: import sin extensión, `ultimosDias` exacto (n días hasta hoy, sin futuras), sólo las de red devuelven `Resultado`, fecha mensual; las funciones con validación síncrona pasan a async (código en 016b34f y 34f303e; docs en el commit de SKILL.md)
 
 ## Supuestos
 
@@ -180,6 +184,21 @@ Un script tirable importó `cotizaciones.ts` y llamó una vez cada función cont
 
 Salió de ahí y quedó en la skill: la inflación llega hasta septiembre (se publica con retraso) y
 la UVA trae fechas futuras.
+
+## Ronda de arreglos tras la revisión (RED observado antes de cada cambio)
+
+| arreglo | RED |
+|---|---|
+| F1 forma antes de cachear | "esperaba [true,[…],"…"] y dio [false,{"error":"x"},"…"]" (el 200 malo pisaba el valor bueno); en caché fría "esperaba un error y no lo hubo" |
+| F2 fetch síncrono | "No se pudo obtener …/uva y no hay valor guardado: boom síncrono" en la segunda llamada (la promesa vieja seguía en vuelo) |
+| F3 enfriamiento | "llamadas dentro del enfriamiento: esperaba 1 y dio 2" |
+| async | "tiró síncrono: Casa inválida: \"MAL!\"" |
+| ultimosDias | "esperaba [29/10, 3/11, 4/11] y dio [28/10, 29/10, 3/11, 4/11, 5/11]" (un día de más y una fecha futura) |
+
+Cambios de comportamiento: `ultimosDias(…, n)` ahora da exactamente `n` días hasta hoy, sin futuras.
+Tras una falla la URL descansa 60 s. El caso "tras una falla se vuelve a intentar" avanza el reloj 60 s.
+Controles: check 183, self-test 40, hook 113, instalar 17, dolarapi 50, todos sin fallas.
+Prueba en vivo repetida: 16 de 16 pasan; `ultimosDias(…, 7)` da 7 puntos (antes 8).
 
 ## Seguimientos conocidos
 

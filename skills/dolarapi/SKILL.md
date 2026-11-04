@@ -13,13 +13,17 @@ investiga ni se reimplementa: se copia.**
 ## Cómo se usa
 
 1. **Copiá `cotizaciones.ts` tal cual** al proyecto (por ejemplo, en la carpeta de utilidades) e
-   importalo desde ahí. Sin dependencias; Node 22.18 o más lo corre directo, y cualquier
-   empaquetador de TypeScript lo toma como está.
+   importalo desde ahí. Sin dependencias. En proyectos TypeScript (empaquetadores, Next) se importa
+   sin extensión: `'./cotizaciones'`; el `tsconfig` por defecto rechaza `'./cotizaciones.ts'` (TS5097)
+   salvo con `allowImportingTsExtensions`. La extensión `.ts` va sólo al correrlo directo con Node
+   22.18 o más, que borra los tipos.
 2. **Nunca lo reescribas ni lo reimplementes a medias.** Si falta algo, se cambia el archivo de
    *esta skill* y se vuelve a copiar a los proyectos. Una copia editada deja de ser igual a las
    demás, que es todo el punto.
-3. Todas las funciones devuelven `{ datos, actualizado, obsoleto }`: el dato, cuándo se bajó
-   (ISO) y si es el último valor guardado porque la API falló.
+3. Las funciones que piden datos a la red (todas las de la tabla de abajo) devuelven
+   `{ datos, actualizado, obsoleto }`: el dato, cuándo se bajó (ISO) y si es el último valor
+   guardado porque la API falló. Los ayudantes (`serie`, `ultimosDias`, cuentas, formatos)
+   devuelven el valor a secas.
 
 ## Reglas que no se negocian
 
@@ -39,6 +43,10 @@ investiga ni se reimplementa: se copia.**
 - Dólares actuales: **una** llamada a `/v1/dolares` trae todas las casas. Nunca una por casa.
 - Caché en memoria: 15 min lo actual, 12 h la historia y los índices. Las consultas simultáneas
   comparten una sola llamada.
+- Una respuesta con forma inesperada (no es lista, o falta `valor`) cuenta como falla: no pisa el
+  último valor bueno.
+- Tras una falla, esa URL descansa 60 s: durante ese tiempo devuelve el último valor guardado
+  (`obsoleto: true`) o repite el error, sin llamar a la API.
 - Historia: sólo la casa pedida. Nunca el volcado completo (~3 MB).
 - Cada proceso tiene su caché. Con servidores sin estado (funciones que se apagan), cada arranque
   vuelve a llamar.
@@ -48,7 +56,7 @@ investiga ni se reimplementa: se copia.**
 ## Funciones
 
 ```ts
-import * as cot from './cotizaciones.ts';
+import * as cot from './cotizaciones'; // en Node directo: './cotizaciones.ts'
 
 const blue = await cot.dolar('blue');            // blue.datos.venta, blue.datos.fechaActualizacion
 const todos = await cot.dolares();               // 1 llamada, todas las casas
@@ -79,11 +87,12 @@ La salida es `{ fecha: 'AAAA-MM-DD', valor }[]`, sin nulos, y sirve a cualquier 
 
 ```ts
 const h = await cot.historiaDolar('blue');
-const puntos = cot.ultimosDias(cot.serie(h.datos, 'venta'), 90);   // últimos 90 días
+const puntos = cot.ultimosDias(cot.serie(h.datos, 'venta'), 90);   // los últimos 90 días, hasta hoy
 ```
 
 **La historia no tiene endpoint por rango**: es una llamada por casa y se recorta acá con
-`ultimosDias`. No busques otro. El corte usa la fecha de Argentina, no la de UTC. Para comparar
+`ultimosDias(puntos, n)`: los últimos `n` días de calendario, hasta hoy (fecha de Argentina, no la de
+UTC) inclusive, sin las fechas futuras. No busques otro. Para comparar
 dos casas, `serie` de cada una y se alinean por `fecha`.
 
 ### Cuentas
@@ -111,7 +120,9 @@ dos casas, `serie` de cada una y se alinean por `fecha`.
   la cotización actual: son fuentes distintas.
 - **La inflación se publica con retraso.** Pedir un ajuste hasta un mes todavía no publicado
   falla con "Falta la inflación de AAAA-MM": mostralo, no lo estimes.
-- **La UVA trae fechas futuras** (se publica por adelantado).
+- **La UVA trae fechas futuras** (se publica por adelantado); `ultimosDias` las descarta.
+- **La `fecha` de la inflación mensual es el último día del mes.** Mostrala como mes y año
+  ("septiembre de 2026"), no como día: `fechaCorta` daría "30/09/2026".
 - **`oficial` es la cotización minorista; `mayorista` es otra casa.** No está verificado contra la
   documentación de DolarApi: no lo presentes como el valor del BCRA.
 - **`bolsa` es el dólar MEP.** En DolarApi el `nombre` dice "Bolsa".
