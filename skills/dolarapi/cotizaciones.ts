@@ -41,7 +41,10 @@ const guardado = new Map<string, { datos: unknown; en: number }>();
 const enVuelo = new Map<string, Promise<Resultado<unknown>>>();
 const fallos = new Map<string, { en: number; error: Error }>();
 
+let generacion = 0; // sube en cada limpiarCache(): una consulta que arrancó antes ya no escribe
+
 export function limpiarCache(): void {
+  generacion++;
   guardado.clear();
   enVuelo.clear();
   fallos.clear();
@@ -59,6 +62,7 @@ function pedir<T>(url: string, ttl: number, forma: (d: unknown) => boolean): Pro
   if (previa) return previa as Promise<Resultado<T>>;
   const f = fallos.get(url);
   if (f && entorno.ahora() - f.en < ENFRIAMIENTO) return g ? Promise.resolve(resultado<T>(g, true)) : Promise.reject(f.error);
+  const gen = generacion;
   const p = (async () => {
     try {
       const r = await entorno.fetch(url, { signal: AbortSignal.timeout(10_000) });
@@ -66,13 +70,15 @@ function pedir<T>(url: string, ttl: number, forma: (d: unknown) => boolean): Pro
       const datos = await r.json();
       if (!forma(datos)) throw new Error('la respuesta no tiene la forma esperada (vacía o sin los campos que usa esta skill)');
       const nuevo = { datos, en: entorno.ahora() };
-      guardado.set(url, nuevo);
-      fallos.delete(url);
+      if (gen === generacion) {
+        guardado.set(url, nuevo);
+        fallos.delete(url);
+      }
       return resultado<T>(nuevo, false);
     } catch (e) {
       const motivo = e instanceof Error ? e.message : String(e);
       const error = new Error(`No se pudo obtener ${url} y no hay valor guardado: ${motivo}`);
-      fallos.set(url, { en: entorno.ahora(), error });
+      if (gen === generacion) fallos.set(url, { en: entorno.ahora(), error });
       if (g) return resultado<T>(g, true); // el último valor, con su fecha, marcado como viejo
       throw error;
     }

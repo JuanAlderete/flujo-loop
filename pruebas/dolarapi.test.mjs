@@ -600,6 +600,104 @@ caso('forma profunda: cada endpoint rechaza una lista vacía', async () => {
   }
 });
 
+// ── limpiarCache() con una consulta en vuelo ─────────────────────────────────
+
+/** Un fetch que se queda esperando hasta que la prueba lo resuelve (`ok`) o lo rompe (`mal`). */
+function fetchPendiente() {
+  const p = { n: 0, ok: null, mal: null };
+  c.entorno.ahora = () => reloj;
+  c.entorno.fetch = () => {
+    p.n++;
+    return new Promise((res, rej) => {
+      p.ok = (cuerpo) => res({ ok: true, status: 200, json: async () => structuredClone(cuerpo) });
+      p.mal = rej;
+    });
+  };
+  c.limpiarCache();
+  return p;
+}
+
+caso('limpiarCache: lo que llega de una consulta anterior no vuelve a llenar la caché', async () => {
+  const p = fetchPendiente();
+  const vieja = c.dolares();
+  c.limpiarCache();
+  p.ok(DOLARES);
+  await vieja;
+  const nueva = c.dolares(); // si la vieja escribió, esto sale de la caché y no llama
+  igual(p.n, 2, 'llamadas tras limpiar:');
+  p.ok(DOLARES);
+  await nueva;
+});
+
+caso('limpiarCache: una falla de una consulta anterior no deja enfriamiento', async () => {
+  const p = fetchPendiente();
+  const vieja = c.dolares().catch((e) => e);
+  c.limpiarCache();
+  p.mal(new Error('caída'));
+  await vieja;
+  const nueva = c.dolares(); // si la vieja dejó enfriamiento, repite el error sin llamar
+  igual(p.n, 2, 'llamadas tras limpiar:');
+  p.ok(DOLARES);
+  igual((await nueva).datos.length, 3);
+});
+
+caso('limpiarCache: sin limpiar, la consulta en vuelo sí escribe la caché', async () => {
+  const p = fetchPendiente();
+  const a = c.dolares();
+  p.ok(DOLARES);
+  await a;
+  await c.dolares();
+  igual(p.n, 1, 'llamadas:');
+});
+
+// ── Falla compartida, enfriamiento y limpiarCache ────────────────────────────
+
+caso('falla: los llamadores simultáneos comparten una llamada y reciben lo mismo (viejo)', async () => {
+  let cuerpo = PUNTOS;
+  entorno(() => cuerpo);
+  const bueno = await c.uva();
+  cuerpo = new Error('caída');
+  reloj += 13 * HORA;
+  const rs = await Promise.all([c.uva(), c.uva(), c.uva()]);
+  igual(llamadas.length, 2, 'llamadas:');
+  igual(rs.map((r) => [r.obsoleto, r.actualizado, r.datos]), Array(3).fill([true, bueno.actualizado, PUNTOS]));
+});
+
+caso('falla: los llamadores simultáneos sin valor guardado reciben el mismo error', async () => {
+  entorno({ [UVA]: new Error('caída') });
+  const errores = await Promise.all([c.uva().catch((e) => e), c.uva().catch((e) => e)]);
+  igual(llamadas.length, 1, 'llamadas:');
+  afirmar(errores[0] === errores[1] && /caída/.test(errores[0].message), 'no recibieron el mismo error');
+});
+
+caso('limpiarCache: también borra el enfriamiento', async () => {
+  entorno({ [UVA]: new Error('caída') });
+  await falla(() => c.uva(), /caída/);
+  c.limpiarCache();
+  await falla(() => c.uva(), /caída/);
+  igual(llamadas.length, 2, 'llamadas tras limpiar:');
+});
+
+caso('enfriamiento: un éxito lo borra; una falla posterior empieza uno nuevo', async () => {
+  let cuerpo = new Error('caída');
+  entorno(() => cuerpo);
+  await falla(() => c.uva(), /caída/);
+  reloj += 60_000;
+  cuerpo = PUNTOS;
+  await c.uva(); // éxito: borra el enfriamiento
+  cuerpo = new Error('otra vez');
+  reloj += 13 * HORA;
+  await c.uva(); // falla nueva, enfriamiento nuevo (llamada 3)
+  await c.uva();
+  igual(llamadas.length, 3, 'dentro del enfriamiento nuevo:');
+  reloj += 60_000 - 1;
+  await c.uva();
+  igual(llamadas.length, 3, 'a 60 s menos 1 ms:');
+  reloj += 1;
+  await c.uva();
+  igual(llamadas.length, 4, 'a los 60 s:');
+});
+
 // ── Salida ────────────────────────────────────────────────────────────────────
 
 for (const [nombre, fn] of cola) {
