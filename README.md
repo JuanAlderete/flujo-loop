@@ -62,6 +62,7 @@ recomienda rtk si no lo tenés (ver [Ahorrar tokens](#ahorrar-tokens-caveman-y-r
 | `revision-independiente` | la revisión de **corrección** antes de presentar, hecha por un revisor nuevo que no vio la conversación (dos si el cambio toca plata, datos o permisos). Aparte de la de seguridad. Propia |
 | `seguridad-de-skills` | qué revisar antes de sumar, actualizar o escribir una skill, según el **OWASP Agentic Skills Top 10** |
 | `caveman` | **opcional**: respuestas más cortas, para gastar menos tokens. Se activa con `/caveman` y se apaga con "stop caveman". Ver [Ahorrar tokens](#ahorrar-tokens-caveman-y-rtk) |
+| `dolarapi` | cotizaciones del dólar (oficial, blue, MEP, CCL…), historia, gráficos, brecha, inflación, UVA, riesgo país y feriados, **iguales en todos los proyectos**: un archivo `cotizaciones.ts` que se copia tal cual, sin dependencias, con caché y el mínimo de llamadas a DolarApi y ArgentinaDatos. Propia |
 
 > 🔑 **Las skills copiadas de otro repo se instalan sólo si siguen idénticas a su fuente.** Cada
 > una trae un `ORIGEN.json` con el commit exacto y el hash de cada archivo. Si algo no coincide,
@@ -182,11 +183,12 @@ duplica** los enganches.
 
 ## Desarrollo
 
-Tres suites, sin framework a propósito:
+Las suites, sin framework a propósito:
 
 ```bash
 node pruebas/check.mjs              # que las skills carguen y que la genérica siga siendo genérica
 node pruebas/check.mjs --self-test  # que el verificador rechace lo que tiene que rechazar
 node pruebas/hook.test.mjs          # el hook, incluido que FALLE ABIERTO
 node pruebas/instalar.test.mjs      # el instalador, incluido que NO pise una config mal escrita
+node pruebas/dolarapi.test.mjs      # cotizaciones.ts: caché, duplicados y valor viejo si la API falla (sin red)
 ```
