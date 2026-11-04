@@ -46,10 +46,10 @@ en todos los proyectos, rápido y con las menos llamadas posibles a la API.
 - [x] T7 · F2 carrera si el fetch tira síncrono: la consulta en vuelo siempre se limpia (commit 016b34f)
 - [x] T8 · F3 enfriamiento de 60 s tras una falla, por URL (commit 016b34f)
 - [x] T9 · F4 SKILL.md: import sin extensión, `ultimosDias` exacto (n días hasta hoy, sin futuras), sólo las de red devuelven `Resultado`, fecha mensual; las funciones con validación síncrona pasan a async (código en 016b34f y 34f303e; docs en el commit de SKILL.md)
-- [ ] T10 · W1 validación de forma profunda: lista no vacía de objetos con los campos que usa cada endpoint; `cotizacionDolarEn`: objeto con `fecha` y `venta` (ruta: escritor delegado)
-- [ ] T11 · W2 `limpiarCache()` con una consulta en vuelo: lo que llega después no escribe caché ni enfriamiento (ruta: escritor delegado)
-- [ ] T12 · pruebas de cobertura: llamadores simultáneos en una falla, `limpiarCache` limpia el enfriamiento, un éxito limpia el enfriamiento (ruta: escritor delegado)
-- [ ] T13 · rastro al día (conteos, commit de JD-1, prueba en vivo con la validación nueva)
+- [x] T10 · W1 validación de forma profunda: lista no vacía de objetos con los campos que usa cada endpoint; `cotizacionDolarEn`: objeto con `fecha` y `venta` (ruta: escritor delegado; commit 3948cc0)
+- [x] T11 · W2 `limpiarCache()` con una consulta en vuelo: lo que llega después no escribe caché ni enfriamiento (ruta: escritor delegado; commit 1beb1b1)
+- [x] T12 · pruebas de cobertura: llamadores simultáneos en una falla, `limpiarCache` limpia el enfriamiento, un éxito limpia el enfriamiento (ruta: escritor delegado; commit 1beb1b1)
+- [x] T13 · rastro al día (conteos, commit de JD-1, prueba en vivo con la validación nueva)
 
 ## Supuestos
 
@@ -119,7 +119,7 @@ seis índices y feriados).
 
 ### 2 · Las mutaciones verificadas
 
-Cada una aplicada sobre `cotizaciones.ts` y revertida (después, 43 de 43 otra vez).
+Cada una aplicada sobre `cotizaciones.ts` y revertida (después, 43 de 43 otra vez). Los números son de la tanda original de 43 casos; hoy son 66.
 
 | mutación | qué cayó |
 |---|---|
@@ -142,7 +142,7 @@ ahí. Se repitió apuntando a la línea del `return`.
 | `node pruebas/check.mjs --self-test` | 40 casos, sin fallas |
 | `node pruebas/hook.test.mjs` | 113 casos, sin fallas |
 | `node pruebas/instalar.test.mjs` | 17 casos, sin fallas |
-| `node pruebas/dolarapi.test.mjs` | 43 casos, sin fallas |
+| `node pruebas/dolarapi.test.mjs` | 66 casos, sin fallas |
 
 Además, `node instalar.mjs` con un destino de prueba copió `skills/dolarapi` (SKILL.md y
 cotizaciones.ts) sin registrar nada.
@@ -204,6 +204,19 @@ Tras una falla la URL descansa 60 s. El caso "tras una falla se vuelve a intenta
 Controles: check 183, self-test 40, hook 113, instalar 17, dolarapi 50, todos sin fallas.
 Prueba en vivo repetida: 16 de 16 pasan; `ultimosDias(…, 7)` da 7 puntos (antes 8).
 
+## Segunda ronda (validación profunda y limpiarCache)
+
+| arreglo | RED |
+|---|---|
+| W1 forma profunda | "No hay cotización para la casa \"blue\"" y "Cannot read properties of null (reading 'casa')" (un `[]`/`[null]` pisaba el valor bueno); "cotizacionDolarEn {} … esperaba un error y no lo hubo"; "esperaba [true,{…}] y dio [false,{}]" |
+| W2 `limpiarCache` en vuelo | "llamadas tras limpiar: esperaba 2 y dio 1" (la consulta vieja volvía a llenar la caché), y lo mismo con el enfriamiento de una falla vieja |
+
+Una lista es válida si no está vacía y cada ítem es un objeto con el campo clave (se revisan todos los ítems). Pruebas de cobertura sumadas
+(pasan de entrada porque describen lo que ya hacía el código): llamadores simultáneos en una falla, `limpiarCache` borra el enfriamiento,
+un éxito borra el enfriamiento. Las fixtures de los casos viejos tenían ítems incompletos (`[]`, plazo fijo sin `entidad`) y se corrigieron.
+Controles: check 183, self-test 40, hook 113, instalar 17, dolarapi 66, todos sin fallas.
+Prueba en vivo repetida con la validación nueva: 16 de 16 pasan (las respuestas reales cumplen la forma).
+
 ## Seguimientos conocidos
 
 - Cuando llegue la skill de INDEC, decidir si pasa a ser la fuente de la inflación y cambiar
@@ -219,4 +232,4 @@ Prueba en vivo repetida: 16 de 16 pasan; `ultimosDias(…, 7)` da 7 puntos (ante
   22.23 lo corre quitando los tipos.
 - Cómo anda desde un navegador: las cabeceras dicen CORS `*`, pero no se probó desde uno.
 - Las revisiones (independiente, seguridad, judgment-day) no corrieron en este paso.
-- Judgment day, JD-1 arreglado: el `fetch` por defecto de `cotizaciones.ts` llama a `globalThis.fetch` en cada llamada y con el receptor correcto (antes tiraba "Illegal invocation" en el navegador); prueba de regresión en `pruebas/dolarapi.test.mjs` (commit: ver `git log` de "fetch por defecto").
+- Judgment day, JD-1 arreglado: el `fetch` por defecto de `cotizaciones.ts` llama a `globalThis.fetch` en cada llamada y con el receptor correcto (antes tiraba "Illegal invocation" en el navegador); prueba de regresión en `pruebas/dolarapi.test.mjs` (commit 3365b49).
