@@ -114,4 +114,4 @@ Hash = 16 primeros caracteres de sha256. Restaurado desde una copia en `/tmp`, n
 - [x] Chequeos nuevos en `pruebas/check.mjs` y caso nuevo en `pruebas/hook.test.mjs`.
 - [x] Paso 5 y sección "El rastro" de `SKILL.md`.
 - [x] Recordatorio del hook.
-- [ ] Pendientes en otros cambios: el `Stop` que revisa encabezados, la revisión independiente y el límite de vueltas.
+- [x] Pendientes en otros cambios: el `Stop` que revisa encabezados, la revisión independiente y el límite de vueltas. Resueltos: la revisión independiente en el PR #5; el `Stop` y el límite de vueltas en el PR #7.

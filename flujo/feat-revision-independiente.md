@@ -175,4 +175,4 @@ es sólo el diff). Quedó escrito en la skill y con un chequeo.
 - [x] Requisitos en `pruebas/check.mjs`, aserción en `pruebas/hook.test.mjs`, lista en `pruebas/instalar.test.mjs`.
 - [x] Skill `revision-independiente`.
 - [x] Paso 5 de `flujo-loop`, recordatorio del hook, README.
-- [ ] Pendientes en otros cambios: límite de vueltas, `Stop` que revisa encabezados, guardrail de producción.
+- [x] Pendientes en otros cambios: límite de vueltas, `Stop` que revisa encabezados, guardrail de producción. Resueltos los tres en el PR #7.

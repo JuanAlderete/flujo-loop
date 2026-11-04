@@ -292,4 +292,4 @@ después de esto va a **Debe** como "no se pudo resolver", y decide la persona.
 - [x] Tope de 2 vueltas (punto 7)
 - [x] Plan y README actualizados
 - [x] Revisión independiente, ronda 1 (dos revisores ciegos); ronda 1 de arreglos hecha, sin segunda revisión
-- [ ] Push, PR y merge: no los hago yo
+- [x] Push, PR y merge: PR #7, mergeado por el dueño.

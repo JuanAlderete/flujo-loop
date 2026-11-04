@@ -195,4 +195,4 @@ Del guardrail también quedaron dos cosas anotadas:
 - [x] `seguridad-de-skills`.
 - [x] El guard sin los dos rojos falsos.
 - [x] El README.
-- [ ] Publicar: lo decide el dueño.
+- [x] Publicado: PR #1, mergeado por el dueño.

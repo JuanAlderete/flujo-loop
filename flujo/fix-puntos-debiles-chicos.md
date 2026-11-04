@@ -80,4 +80,4 @@ Restaurado desde una copia en `/tmp` (no con `git checkout`); la suite volvió a
 - [x] Débil 3: disparadores en el Paso 5 y `skill-scanner` en `seguridad-de-skills`.
 - [x] Débil 4: Paso 0 en `AGENTS.md` o `CLAUDE.md`.
 - [x] Débil 5: línea de idioma.
-- [ ] Publicar: no se pushea ni se abre PR; lo decide el dueño.
+- [x] Publicado: PR #3, mergeado por el dueño.
