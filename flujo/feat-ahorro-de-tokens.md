@@ -47,7 +47,7 @@ Todas salen del `/grilling` del 2026-11-04 (respuesta del dueño: "si a todo").
 | 7 · fijada | Copiada al repo. Sin `ORIGEN.json`, como las demás propias |
 | 8 · revisión | Leída entera, con intención |
 | 9 · registro | Este rastro |
-| 10 · ¿anda acá? | `pruebas/check.mjs` la carga sin fallas. ⚠️ Nombra tres skills que flujo-loop **no** instala: `ultracave`, `megacave` y `/caveman-compress`. Pedir `/caveman ultra` no va a encontrar nada |
+| 10 · ¿anda acá? | `pruebas/check.mjs` la carga sin fallas. Nombraba tres skills que flujo-loop **no** instala: `ultracave`, `megacave` y `/caveman-compress`. **Se sacaron** esas dos referencias (los alias `/caveman ultra` y `/caveman wenyan`, y la excepción de `/caveman-compress`), a pedido del dueño después de judgment-day |
 
 **Veredicto:** se instala.
 
