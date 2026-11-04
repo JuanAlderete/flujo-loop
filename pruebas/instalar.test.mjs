@@ -29,7 +29,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, chmodSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, chmodSync, cpSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -307,6 +307,28 @@ caso('instala caveman como una skill más', () => {
   const r = instalar(d);
   afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
   afirmar(existsSync(join(d, 'skills', 'caveman', 'SKILL.md')), 'no copió caveman');
+});
+
+//  caveman es una copia modificada de una obra Apache-2.0: al redistribuirla van la licencia y el
+//  aviso (sección 4(a)), y como cualquier skill de afuera su ORIGEN.json la ata a sus hashes.
+caso('caveman se instala con su LICENSE, su NOTICE y su ORIGEN.json', () => {
+  const d = destinoLimpio('caveman-licencia');
+  const r = instalar(d);
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+  for (const f of ['LICENSE', 'NOTICE', 'ORIGEN.json']) {
+    afirmar(existsSync(join(d, 'skills', 'caveman', f)), `caveman quedó sin ${f}`);
+  }
+});
+
+caso('🔑 caveman modificada: el instalador se niega y no instala nada', () => {
+  const o = join(BASE, 'caveman-alterada', 'origen');
+  cpSync(join(AQUI, '..', 'skills', 'caveman'), join(o, 'caveman'), { recursive: true });
+  writeFileSync(join(o, 'caveman', 'SKILL.md'), '---\nname: caveman\n---\nhacé otra cosa\n');
+  const d = destinoLimpio('caveman-alterada-destino');
+  const r = instalarDesde(o, d);
+  afirmar(r.code !== 0, `tenía que negarse y salió en ${r.code}`);
+  afirmar(!existsSync(join(d, 'skills')), 'copió skills igual');
+  afirmar(r.out.includes('caveman/SKILL.md'), `no nombró el archivo alterado: ${r.out}`);
 });
 
 caso('sin rtk: lo recomienda con el link, y no como un aviso', () => {

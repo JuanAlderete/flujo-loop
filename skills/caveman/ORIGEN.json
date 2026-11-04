@@ -1,0 +1,19 @@
+{
+  "fuente": "https://github.com/JuliusBrussee/caveman",
+  "ruta": "skills/caveman",
+  "commit": "2e068f735253cce28256744804785f01887d9646",
+  "copiado": "2026-11-04",
+  "licencia": "Apache-2.0 (JuliusBrussee/caveman). LICENSE y NOTICE vienen, sin cambios, de la raíz del repo de origen (no de skills/caveman), en el mismo commit. No se copia su README.md.",
+  "modificado": [
+    "description: se restringe a pedido explícito (/caveman, \"caveman mode\", \"talk like caveman\") y se excluyen los reportes finales, las preguntas a la persona y lo que queda guardado (código, commits, documentos).",
+    "Se quita la frase de los alias (/caveman ultra y /caveman wenyan, que remitían a ultracave y megacave) y la excepción de caveman-compress.",
+    "Se agrega la regla 8, \"Final report or summary\", que deja esos textos en prosa completa.",
+    "Se agrega, tras el encabezado, el comentario que avisa de la modificación (Apache-2.0, sección 4(b))."
+  ],
+  "actualizar": "Leer el diff entero contra el commit nuevo, volver a aplicar las modificaciones y regenerar estos hashes.",
+  "sha256": {
+    "LICENSE": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30",
+    "NOTICE": "20112dc6e62e91da4f03c29fd10cfa41743a9c526389fdf1396c3649c18216fc",
+    "SKILL.md": "11cab000a0dca1f42e71751ec04f7cab5174bcf2ab0948d075b74c22a9d12195"
+  }
+}
