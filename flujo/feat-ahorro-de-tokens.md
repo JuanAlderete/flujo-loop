@@ -239,4 +239,4 @@ Microsoft Store, que no ejecuta nada.
 - [x] Rebase sobre `origin/main`, sin conflictos de texto. Las reglas nuevas del Paso 5 se
   cumplieron después: el reporte llano y la revisión independiente.
 - [x] Hallazgo 1 del reporte (descripción vs. regla 8 de caveman): el dueño decidió alinearlas.
-- [ ] Publicar: lo decide el dueño.
+- [x] Publicado: PR #9, mergeado por el dueño.

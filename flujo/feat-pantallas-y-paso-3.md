@@ -186,4 +186,4 @@ Controles al final de esta pasada: `node pruebas/check.mjs` → `OK  168 chequeo
 - [x] 2.7 escalera y "nunca se recorta"
 - [x] 2.8 ofrecer `/no-entendi`
 - [x] Revisión independiente del primer commit; hallazgos 1 a 5 arreglados, 6 descartado
-- [ ] Push, PR y merge: no los hago yo
+- [x] Push, PR y merge: PR #6, mergeado por el dueño.

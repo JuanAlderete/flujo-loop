@@ -1,7 +1,8 @@
 # Plan de mejoras de flujo-loop
 
 Armado el 2026-10-26, comparando flujo-loop con tres paquetes externos:
-**ponytail**, **Anti-Slop** y **Thermos**. Es un plan, no está implementado.
+**ponytail**, **Anti-Slop** y **Thermos**. **Está implementado entero**: el estado de cada
+punto está en la sección 5.
 
 **Para quién es flujo-loop**: el equipo de Loop, que en su mayoría no programa. Le
 piden features a un agente, y otra persona audita el resultado. flujo-loop es la
@@ -51,7 +52,7 @@ Cada una dice de dónde sale, en qué paso entra y si se **adapta** (se reescrib
 castellano dentro de flujo-loop) o sólo se **toma la idea**. Ninguna se instala
 tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 
-### 2.1 Reporte final en lenguaje llano · adaptar
+### 2.1 Reporte final en lenguaje llano · adaptar · hecho (PR #4)
 
 - **Fuente:** ponytail, `skills/ponytail-review/SKILL.md:69-96`.
 - **Dónde:** al cierre del Paso 5, y como sección del rastro.
@@ -64,7 +65,7 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 - **Por qué primero:** es lo que más le sirve al auditor. La numeración le permite
   responder "arreglá el 2 y el 5" sin leer código.
 
-### 2.2 Revisión independiente de corrección · skill propia
+### 2.2 Revisión independiente de corrección · skill propia · hecho (PR #5 y #8)
 
 - **Fuentes:**
   - Thermos: dos revisores en paralelo, y no exagerar la prioridad (`thermo-nuclear-review/SKILL.md:25-51`).
@@ -79,7 +80,7 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
   - fugas de una feature que está detrás de un flag;
   - "lo que se pidió romper no es un hallazgo".
 
-### 2.3 Cuarta prueba para pantallas · adaptar
+### 2.3 Cuarta prueba para pantallas · adaptar · hecho (PR #6)
 
 - **Fuente:** Anti-Slop R-35 (`skills/antislop/SKILL.md:397-405`).
 - **Dónde:** en "Si tocás pantallas" (`SKILL.md:313`).
@@ -89,7 +90,7 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 - **Por qué:** hoy las tres pruebas son de tests y controles. Una pantalla puede
   pasar todo sin que nadie la haya usado.
 
-### 2.4 Checklist corto de accesibilidad y celular · tomar la idea
+### 2.4 Checklist corto de accesibilidad y celular · tomar la idea · hecho (PR #6)
 
 - **Fuentes:** `antislop-human` (contraste, foco, teclado, estados, zoom) y
   `antislop-layoutmobile` (desbordes, tamaño de los botones, navegación).
@@ -98,21 +99,21 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 - El verificador de contraste (`antislop-human/contrast-check.py`) **sí** se podría
   vendorizar con su `ORIGEN.json`, previa `/seguridad-de-skills`, porque ejecuta Python.
 
-### 2.5 Contenido real o un placeholder honesto · tomar la idea
+### 2.5 Contenido real o un placeholder honesto · tomar la idea · hecho (PR #6)
 
 - **Fuente:** Anti-Slop R-36 y R-38 (`antislop/SKILL.md:407-430`).
 - **Dónde:** Paso 3.
 - **Regla:** nada de datos, testimonios ni números inventados en pantalla o en los
   datos de ejemplo que se ven. Si falta el dato real, un placeholder que diga que lo es.
 
-### 2.6 Registro de atajos · adaptar
+### 2.6 Registro de atajos · adaptar · hecho (PR #6)
 
 - **Fuente:** ponytail, los comentarios `shortcut:` y `/ponytail-debt`
   (`skills/ponytail-debt/SKILL.md:13-39`).
 - **Dónde:** Paso 3 (marcar el atajo) y una sección del rastro, "atajos conocidos".
 - **Formato:** cada atajo con su límite y **cuándo mejorarlo**. Un atajo sin "cuándo" se marca.
 
-### 2.7 "¿Hace falta que exista?" y lo que nunca se recorta · tomar la idea
+### 2.7 "¿Hace falta que exista?" y lo que nunca se recorta · tomar la idea · hecho (PR #6)
 
 - **Fuente:** ponytail, `skills/ponytail/SKILL.md:23-44`: una escalera de decisión
   antes de escribir código, y la lista "Never cut" (validación en los límites,
@@ -121,12 +122,12 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 - **Lo que NO se toma:** la regla de tests de ponytail (`:41`, "un test chico sólo si
   la lógica no es trivial"). Contradice el Paso 2.
 
-### 2.8 Que el agente ofrezca `/no-entendi` solo · mejora propia
+### 2.8 Que el agente ofrezca `/no-entendi` solo · mejora propia · hecho (PR #6)
 
 - Hoy existe, pero la persona se tiene que acordar de pedirlo (`README.md:107-108`).
   Que el agente lo ofrezca al cerrar los mensajes largos.
 
-### 2.9 Ahorro de tokens: rtk y caveman · hecho
+### 2.9 Ahorro de tokens: rtk y caveman · hecho (PR #9)
 
 Agregada el 2026-11-04 e implementada el mismo día en `feat/ahorro-de-tokens`. El rastro está
 en `flujo/feat-ahorro-de-tokens.md`.
@@ -164,23 +165,23 @@ en `flujo/feat-ahorro-de-tokens.md`.
 
 ## 4. Puntos débiles del propio flujo-loop
 
-1. ~~**El `Stop` acepta un rastro vacío**~~ **Hecho** (`feat/puntos-debiles-grandes`): exige los cuatro encabezados. Original: (`hook.mjs:245`): sólo verifica que el
+1. ~~**El `Stop` acepta un rastro vacío**~~ **Hecho** (PR #7): exige los cuatro encabezados. Original: (`hook.mjs:245`): sólo verifica que el
    archivo exista. Un chequeo barato: que tenga las secciones de las tres pruebas
    y "lo que no se pudo verificar", sin validar su contenido.
-2. **El recordatorio está desfasado** (`hook.mjs:97-113`): enumera los pasos 1 a 4,
+2. ~~**El recordatorio está desfasado**~~ **Hecho** (PR #3). Original: (`hook.mjs:97-113`): enumera los pasos 1 a 4,
    y no nombra el Paso 0, el Paso 5 ni `/seguridad-de-skills`.
-3. **Tres skills se instalan, pero ningún paso dice cuándo usarlas**:
+3. ~~**Tres skills se instalan, pero ningún paso dice cuándo usarlas**~~ **Hecho** (PR #3). Original:
    `gha-security-review`, `secret-serialization` y `skill-scanner` (`README.md:58-60`).
    Por ejemplo, `gha-security-review` cuando el cambio toca workflows.
-4. **El Paso 0 escribe en `CLAUDE.md`** (`SKILL.md:75`). En repos como Pan Comido
+4. ~~**El Paso 0 escribe en `CLAUDE.md`**~~ **Hecho** (PR #3). Original: (`SKILL.md:75`). En repos como Pan Comido
    las reglas viven en `AGENTS.md`. Falta "escribilo donde el proyecto diga".
-5. **`grilling` y `test-driven-development` están en inglés**, así que las preguntas
+5. ~~**`grilling` y `test-driven-development` están en inglés**~~ **Hecho** (PR #3). Original: estaban en inglés, así que las preguntas
    pueden llegarle en inglés a quien no programa. Falta pedir que respondan en el
    idioma de la persona.
-6. ~~**El guardrail no frena las escrituras a producción**~~ **Hecho** (`feat/puntos-debiles-grandes`): bloquea la lista fija de la sección 6. Original: **El guardrail no frena las escrituras a producción** (`supabase db push`, SQL con
+6. ~~**El guardrail no frena las escrituras a producción**~~ **Hecho** (PR #7): bloquea la lista fija de la sección 6. Original: **El guardrail no frena las escrituras a producción** (`supabase db push`, SQL con
    credenciales). Sólo cubre git, aunque el piso (`SKILL.md:40-55`) dice que eso es
    lo más grave.
-7. ~~**"Arreglá todo en una pasada"**~~ **Hecho** (`feat/puntos-debiles-grandes`): tope de 2 vueltas en `revision-independiente`. Original: **"Arreglá todo en una pasada"** (`SKILL.md:289`) no pone un límite de vueltas
+7. ~~**"Arreglá todo en una pasada"**~~ **Hecho** (PR #7): tope de 2 vueltas en `revision-independiente`. Original: **"Arreglá todo en una pasada"** (`SKILL.md:289`) no pone un límite de vueltas
    ni dice qué hacer si un hallazgo persiste.
 
 ---
@@ -188,14 +189,17 @@ en `flujo/feat-ahorro-de-tokens.md`.
 ## 5. Orden de implementación sugerido
 
 1. ~~Mergear `feat/ultima-puerta-y-seguridad` (sección 0).~~ Hecho: PR #1.
-2. Arreglar los puntos débiles chicos: 2 (recordatorio), 3 (cuándo usar cada skill),
-   4 (dónde escribe el Paso 0) y 5 (idioma).
-3. **2.1, el reporte en lenguaje llano**: lo que más le cambia la vida al auditor.
-4. **2.2, la revisión independiente**: la mejora más grande.
-5. 2.3 y 2.4 (pantallas), juntas.
-6. 2.5, 2.6 y 2.7 (Paso 3), juntas.
-7. ~~Los puntos débiles 1 (rastro vacío), 6 (producción) y 7 (límite de vueltas).~~ Hecho.
-8. ~~2.9, rtk y caveman en el instalador.~~ Hecho (`feat/ahorro-de-tokens`).
+2. ~~Arreglar los puntos débiles chicos: 2 (recordatorio), 3 (cuándo usar cada skill),
+   4 (dónde escribe el Paso 0) y 5 (idioma).~~ Hecho: PR #3.
+3. ~~**2.1, el reporte en lenguaje llano**: lo que más le cambia la vida al auditor.~~ Hecho: PR #4.
+4. ~~**2.2, la revisión independiente**: la mejora más grande.~~ Hecho: PR #5, y los riesgos de datos en el PR #8.
+5. ~~2.3 y 2.4 (pantallas), juntas.~~ Hecho: PR #6.
+6. ~~2.5, 2.6 y 2.7 (Paso 3), juntas.~~ Hecho: PR #6, junto con el 5 y con el 2.8.
+7. ~~Los puntos débiles 1 (rastro vacío), 6 (producción) y 7 (límite de vueltas).~~ Hecho: PR #7.
+8. ~~2.9, rtk y caveman en el instalador.~~ Hecho: PR #9.
+
+**Estado al 2026-11-04: todo el plan está hecho.** Lo único abierto queda fuera del plan:
+confirmar la instalación en macOS (`flujo/main.md`), cuando alguien la haga en una Mac.
 
 Cada uno con TDD sobre las pruebas de `pruebas/` y su rastro. El `/grilling` del
 plan entero ya se hizo (sección 6); si una pasada abre una decisión que no está
