@@ -109,7 +109,7 @@ function cuantos(destino, evento) {
   const h = ajustes(destino).hooks?.[evento] ?? [];
   return h
     .flatMap((g) => g.hooks ?? [])
-    .filter((c) => String(c.command || '').includes('flujo-loop')).length;
+    .filter((c) => String(c?.command || '').includes('flujo-loop')).length;
 }
 
 if (!existsSync(INSTALADOR)) {
@@ -386,6 +386,28 @@ caso('con rtk y el enganche viejo (rtk-rewrite.sh): no dice nada de rtk', () => 
   afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
   afirmar(!/rtk/i.test(r.out), `habló de rtk sin motivo: ${r.out}`);
 });
+
+//  Una entrada nula en `hooks` (a mano o por otra herramienta) no tiene que romper el instalador
+//  después de haber copiado las skills: eso dejaría una instalación a medias.
+for (const [nombre, hooks] of [
+  ['un hook nulo', [{ hooks: [null] }]],
+  ['un grupo nulo', [null]],
+  ['un hook nulo junto a uno ajeno', [{ hooks: [null, { type: 'command', command: 'otro' }] }]],
+]) {
+  caso(`configuración con ${nombre} en hooks: instala sin romper y conserva lo ajeno`, () => {
+    const d = destinoLimpio(`hooks-nulos-${hooks.length}-${nombre.length}`);
+    mkdirSync(d, { recursive: true });
+    writeFileSync(join(d, 'settings.json'), JSON.stringify({ hooks: { PreToolUse: hooks } }));
+    //  Con rtk en el PATH también se recorre `rtkEnganchado`, que lee los mismos hooks.
+    const r = instalarConPath(d, carpetaConRtk('path-hooks-nulos'));
+    afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+    afirmar(cuantos(d, 'PreToolUse') === 1, 'no quedó exactamente un enganche nuestro');
+    afirmar(existsSync(join(d, 'skills', 'flujo-loop', 'SKILL.md')), 'no copió las skills');
+    if (nombre.includes('ajeno')) {
+      afirmar(readFileSync(join(d, 'settings.json'), 'utf8').includes('"otro"'), 'perdió el ajeno');
+    }
+  });
+}
 
 caso('en simulación también recomienda rtk, sin tocar nada', () => {
   const d = destinoLimpio('simulacion-ahorro');
