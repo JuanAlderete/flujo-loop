@@ -126,6 +126,17 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 - Hoy existe, pero la persona se tiene que acordar de pedirlo (`README.md:107-108`).
   Que el agente lo ofrezca al cerrar los mensajes largos.
 
+### 2.9 Ahorro de tokens: rtk y caveman · hecho
+
+Agregada el 2026-11-04 e implementada el mismo día en `feat/ahorro-de-tokens`. El rastro está
+en `flujo/feat-ahorro-de-tokens.md`.
+
+- **caveman** (respuestas más cortas) se instala como skill propia. No se activa sola: cada
+  persona la pide con `/caveman`.
+- **rtk** (salida de comandos comprimida) es un programa aparte. El instalador sólo lo detecta
+  y lo recomienda: nunca lo baja ni escribe su enganche, que es de `rtk init -g`.
+- El Paso 4 pide volver a correr un control sin resumir si la salida resumida no trae el número.
+
 ---
 
 ## 3. Lo que NO se toma, y por qué
@@ -184,6 +195,7 @@ tal cual: los tres paquetes chocan con flujo-loop en algo (ver sección 3).
 5. 2.3 y 2.4 (pantallas), juntas.
 6. 2.5, 2.6 y 2.7 (Paso 3), juntas.
 7. ~~Los puntos débiles 1 (rastro vacío), 6 (producción) y 7 (límite de vueltas).~~ Hecho.
+8. ~~2.9, rtk y caveman en el instalador.~~ Hecho (`feat/ahorro-de-tokens`).
 
 Cada uno con TDD sobre las pruebas de `pruebas/` y su rastro. El `/grilling` del
 plan entero ya se hizo (sección 6); si una pasada abre una decisión que no está

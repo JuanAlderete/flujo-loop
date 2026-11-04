@@ -1,5 +1,51 @@
 # Ahorro de tokens: caveman y rtk en el instalador
 
+## Reporte en lenguaje llano
+
+**Qué hace este cambio.** Quien instala el flujo ahora recibe dos herramientas para gastar menos
+tokens. caveman hace que el agente escriba respuestas más cortas, y sólo se prende si la persona
+la pide con `/caveman`. rtk achica lo que devuelven los comandos antes de que el agente lo lea;
+como es un programa aparte, el instalador no lo instala: avisa si falta y explica cómo ponerlo.
+
+**Hallazgos**
+
+*Debe*
+
+1. **La descripción de caveman y su regla 8 no dicen lo mismo sobre el reporte final.** *No se
+   pudo resolver: lo encontró la segunda vuelta de la revisión, y el tope son 2 vueltas.* El
+   revisor lo puso como opcional; va acá porque así lo pide el flujo para lo que queda abierto.
+   - **El problema:** la descripción dice que caveman no se usa en ningún reporte final. La regla
+     8 del cuerpo sólo exceptúa el reporte para quien no lee código. Con caveman prendido, un
+     reporte final pedido por alguien que programa puede salir en un estilo o en el otro.
+   - **El arreglo:** alinear las dos frases. Por ejemplo, dejar la regla 8 como "Final report or
+     summary", sin la condición.
+   - **Si no se arregla:** a quien no programa no le cambia nada, porque las dos frases coinciden
+     para ese caso. A quien programa, el reporte final le puede llegar comprimido.
+
+*Conviene*
+
+Ninguno.
+
+*Opcional*
+
+2. **El enganche de rtk se reconoce por la forma del comando.** El instalador reconoce `rtk hook
+   …` (rtk 1.1.0) y `rtk-rewrite.sh` (versiones anteriores, según el revisor; no se pudo
+   comprobar). Si otra versión de rtk lo escribe distinto, el instalador diría que falta el
+   enganche aunque esté.
+   - **El arreglo:** sumar la forma nueva cuando aparezca.
+   - **Si no se arregla:** un consejo de más en la instalación. No rompe nada.
+
+**Veredicto:** se puede presentar. El hallazgo 1 es de redacción y no afecta a quien no programa.
+
+**Lo que no se revisó**
+
+- `skill-scanner` no corrió: necesita `uv` o Python, y en esta máquina no hay ninguno de los dos.
+  caveman se revisó leyéndola entera con `/seguridad-de-skills`.
+- La detección de rtk en Linux y macOS: las pruebas corrieron sólo en Windows.
+- Si rtk conserva los conteos de `pytest`, `cargo test` y `go test`: no hay ninguno en este repo.
+- Si Claude Code deja de cargar caveman sola ante "sé breve": depende de cómo el modelo lee la
+  descripción, y eso no se puede probar.
+
 ## Objetivo
 
 Mejora 2.9 de `docs/plan-de-mejoras.md`. Que quien instala flujo-loop reciba también las dos
@@ -119,14 +165,54 @@ archivo tiene CRLF), y el chequeo "el archivo cambió" lo dio por aplicado. Los 
 parecía que la mutación sobrevivía. Se repitió con un reemplazo exacto que falla si no
 encuentra el texto: ahí cayó. M1 a M4 sí se aplicaron: cada una tiró justo los casos esperados.
 
+Después de la revisión independiente, con 17 casos:
+
+| mutación | qué cayó |
+|---|---|
+| M7 · sacar `\|\brtk-rewrite\b` de la expresión | 1 de 17: "con rtk y el enganche viejo (rtk-rewrite.sh)" |
+
+El primer intento de M7 (un reemplazo dentro de `node -e`) tampoco se aplicó: el script avisó
+"NO APLICÓ" y se repitió desde un archivo, con el texto exacto.
+
 ### 3 · Los números de los controles
+
+Después del rebase sobre `origin/main` y de los arreglos de la revisión:
 
 | control | resultado |
 |---|---|
-| `pruebas/check.mjs` | 147 chequeos, sin fallas (142 antes de sumar caveman) |
-| `pruebas/check.mjs --self-test` | 35 casos, sin fallas |
-| `pruebas/hook.test.mjs` | 23 casos, sin fallas |
-| `pruebas/instalar.test.mjs` | 16 casos, sin fallas (11 antes) |
+| `pruebas/check.mjs` | 177 chequeos, sin fallas |
+| `pruebas/check.mjs --self-test` | 40 casos, sin fallas |
+| `pruebas/hook.test.mjs` | 113 casos, sin fallas |
+| `pruebas/instalar.test.mjs` | 17 casos, sin fallas |
+
+Antes del rebase eran 147, 35, 23 y 16. La diferencia la traen los cambios que ya estaban en
+`origin/main`.
+
+## Revisiones del cambio
+
+**judgment-day** (antes del rebase, sobre `f39bb3f`): 2 jueces ciegos, 0 críticos. Los dos
+coincidieron en dos advertencias: caveman nombraba skills que no se instalan (se sacaron, a pedido
+del dueño), y la forma del enganche de rtk (ver la revisión independiente). Veredicto: aprobado.
+
+**`/revision-independiente`** (después del rebase), con un revisor. El cambio no toca plata,
+datos ni permisos.
+
+- **Vuelta 1:** 0 Debe, 1 Conviene, 2 Opcional. Todos verificados antes de tocar nada:
+  - *Conviene — caveman se podía prender sola* con "be brief" o "less tokens". **Arreglado**: se
+    sacaron esas frases de la descripción. Se descartó el arreglo propuesto
+    (`disable-model-invocation: true`) porque bloquea que el agente la cargue con la herramienta
+    de skills, y el flujo personal del dueño la ejecuta así.
+  - *Opcional — el enganche viejo de rtk* (`rtk-rewrite.sh`) no se reconocía. **Arreglado**, con
+    un test primero (RED: "habló de rtk sin motivo") y la mutación M7.
+  - *Opcional — el cuerpo de caveman no exceptuaba el reporte final.* **Arreglado**: regla 8.
+- **Vuelta 2** (sobre `50659b7`): 0 Debe, 0 Conviene, 1 Opcional: la descripción y la regla 8
+  no dicen lo mismo. Se llegó al tope: va al reporte, en Debe, marcado "no se pudo resolver".
+
+**`skill-scanner`**: no corrió. Necesita `uv` o Python, y en esta máquina sólo está el atajo de la
+Microsoft Store, que no ejecuta nada.
+
+**`gha-security-review`** y **`secret-serialization`**: no aplican. El cambio no toca
+`.github/workflows/`, no agrega campos con credenciales y no convierte objetos enteros a texto.
 
 ## Lo que NO se pudo verificar
 
@@ -148,5 +234,8 @@ encuentra el texto: ahí cayó. M1 a M4 sí se aplicaron: cada una tiró justo l
 - [x] El instalador recomienda rtk sin instalarlo ni escribir su enganche.
 - [x] Paso 4: volver a correr sin resumir si falta el número.
 - [x] README.
-- [ ] Marcar la 2.9 como hecha en el plan (vive en la rama `docs/plan-de-mejoras`).
+- [x] La 2.9 sumada al plan y marcada como hecha (`docs/plan-de-mejoras.md`).
+- [x] Rebase sobre `origin/main`, sin conflictos de texto. Las reglas nuevas del Paso 5 se
+  cumplieron después: el reporte llano y la revisión independiente.
+- [ ] Hallazgo 1 del reporte (descripción vs. regla 8 de caveman): lo decide el dueño.
 - [ ] Publicar: lo decide el dueño.
