@@ -46,6 +46,10 @@ en todos los proyectos, rápido y con las menos llamadas posibles a la API.
 - [x] T7 · F2 carrera si el fetch tira síncrono: la consulta en vuelo siempre se limpia (commit 016b34f)
 - [x] T8 · F3 enfriamiento de 60 s tras una falla, por URL (commit 016b34f)
 - [x] T9 · F4 SKILL.md: import sin extensión, `ultimosDias` exacto (n días hasta hoy, sin futuras), sólo las de red devuelven `Resultado`, fecha mensual; las funciones con validación síncrona pasan a async (código en 016b34f y 34f303e; docs en el commit de SKILL.md)
+- [ ] T10 · W1 validación de forma profunda: lista no vacía de objetos con los campos que usa cada endpoint; `cotizacionDolarEn`: objeto con `fecha` y `venta` (ruta: escritor delegado)
+- [ ] T11 · W2 `limpiarCache()` con una consulta en vuelo: lo que llega después no escribe caché ni enfriamiento (ruta: escritor delegado)
+- [ ] T12 · pruebas de cobertura: llamadores simultáneos en una falla, `limpiarCache` limpia el enfriamiento, un éxito limpia el enfriamiento (ruta: escritor delegado)
+- [ ] T13 · rastro al día (conteos, commit de JD-1, prueba en vivo con la validación nueva)
 
 ## Supuestos
 
