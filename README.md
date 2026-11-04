@@ -61,7 +61,7 @@ recomienda rtk si no lo tenés (ver [Ahorrar tokens](#ahorrar-tokens-caveman-y-r
 | `skill-scanner` | escanea una skill de afuera. Copia fija de getsentry/skills, con `allowed-tools` recortado: su script se corre pasando por el pedido de permiso. **Su salida son pistas, no un aprobado** |
 | `revision-independiente` | la revisión de **corrección** antes de presentar, hecha por un revisor nuevo que no vio la conversación (dos si el cambio toca plata, datos o permisos). Aparte de la de seguridad. Propia |
 | `seguridad-de-skills` | qué revisar antes de sumar, actualizar o escribir una skill, según el **OWASP Agentic Skills Top 10** |
-| `caveman` | **opcional**: respuestas más cortas, para gastar menos tokens. Se activa con `/caveman` y se apaga con "stop caveman". Ver [Ahorrar tokens](#ahorrar-tokens-caveman-y-rtk) |
+| `caveman` | **opcional**: respuestas más cortas, para gastar menos tokens. Se activa con `/caveman` y se apaga con "stop caveman". Ver [Ahorrar tokens](#ahorrar-tokens-caveman-y-rtk). Copia modificada de [JuliusBrussee/caveman](https://github.com/JuliusBrussee/caveman) (Apache-2.0), con su LICENSE y su NOTICE; las modificaciones están en su `ORIGEN.json` |
 
 > 🔑 **Las skills copiadas de otro repo se instalan sólo si siguen idénticas a su fuente.** Cada
 > una trae un `ORIGEN.json` con el commit exacto y el hash de cada archivo. Si algo no coincide,

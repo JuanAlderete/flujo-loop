@@ -6,6 +6,7 @@ description: >
   caveman". Stays on until "stop caveman" or "normal mode". Not for final
   reports, questions to the user, or anything persisted (code, commits, docs).
 ---
+<!-- Modificado por flujo-loop a partir de JuliusBrussee/caveman@2e068f7 (Apache-2.0); ver NOTICE y ORIGEN.json. -->
 
 # caveman
 

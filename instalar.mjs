@@ -170,7 +170,7 @@ for (const { evento, matcher } of EVENTOS) {
   const limpios = grupos
     .map((g) => ({
       ...g,
-      hooks: (g.hooks ?? []).filter((c) => !String(c.command || '').includes(MARCA)),
+      hooks: (g?.hooks ?? []).filter((c) => !String(c?.command || '').includes(MARCA)),
     }))
     .filter((g) => (g.hooks ?? []).length > 0);
 
@@ -227,7 +227,7 @@ function rtkEnganchado() {
     .filter(Array.isArray)
     .flat()
     .flatMap((g) => (Array.isArray(g?.hooks) ? g.hooks : []))
-    .some((c) => /\brtk(\.exe)?["']?\s+hook\b|\brtk-rewrite\b/i.test(String(c.command || '')));
+    .some((c) => /\brtk(\.exe)?["']?\s+hook\b|\brtk-rewrite\b/i.test(String(c?.command || '')));
 }
 
 if (!rtkEnElPath()) {
