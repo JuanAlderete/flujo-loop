@@ -170,6 +170,7 @@ caso('tras una falla se vuelve a intentar en la llamada siguiente (no se cachea 
   let n = 0;
   entorno(() => (++n === 1 ? new Error('x') : DOLARES));
   await falla(() => c.dolares(), /x/);
+  reloj += 60_000; // pasado el enfriamiento
   const r = await c.dolares();
   afirmar(r.datos.length === 3 && r.obsoleto === false, 'no se recuperó');
 });
@@ -299,10 +300,11 @@ const INDICES = [
 
 for (const [fn, url] of INDICES) {
   caso(`${fn}: una llamada a ${url.replace(A, '')}, cacheada 12 h`, async () => {
-    entorno({ [url]: [{ fecha: '2026-10-31', valor: 2.5 }] });
+    const punto = { fecha: '2026-10-31', valor: 2.5 };
+    entorno({ [url]: fn === 'riesgoPaisUltimo' ? punto : [punto] }); // el "último" es un objeto, no una lista
     const r = await c[fn]();
     igual(llamadas, [url]);
-    igual(r.datos[0].valor, 2.5);
+    igual([r.datos].flat()[0].valor, 2.5);
     reloj += 12 * HORA - 1;
     await c[fn]();
     igual(llamadas.length, 1, 'antes de las 12 h:');
@@ -444,6 +446,90 @@ caso('fetch por defecto: se llama a globalThis.fetch en el momento, con globalTh
     c.entorno.ahora = guardadoEntorno.ahora;
     c.limpiarCache();
   }
+});
+
+// ── Forma de la respuesta, carrera síncrona, enfriamiento, async ─────────────
+
+const UVA = `${A}/finanzas/indices/uva`;
+const PUNTOS = [{ fecha: '2026-11-03', valor: 1 }];
+
+caso('forma: un 200 mal formado no pisa el último valor bueno (otro endpoint, no /dolares)', async () => {
+  let cuerpo = PUNTOS;
+  entorno(() => cuerpo);
+  const bueno = await c.uva();
+  cuerpo = { error: 'x' };
+  reloj += 13 * HORA;
+  const r = await c.uva();
+  igual([r.obsoleto, r.datos, r.actualizado], [true, PUNTOS, bueno.actualizado], 'tras el 200 malo:');
+});
+
+caso('forma: un 200 mal formado en caché fría es un error claro y no se guarda', async () => {
+  let cuerpo = { valor: 'mucho' };
+  entorno(() => cuerpo);
+  await falla(() => c.riesgoPaisUltimo(), /riesgo-pais\/ultimo.*no hay valor guardado/);
+  cuerpo = { fecha: '2026-11-03', valor: 831 };
+  reloj += 61_000;
+  const r = await c.riesgoPaisUltimo();
+  igual([r.datos.valor, r.obsoleto, llamadas.length], [831, false, 2], 'tras el cuerpo bueno:');
+});
+
+caso('carrera: si fetch tira síncrono, la consulta en vuelo se limpia y la siguiente vuelve a llamar', async () => {
+  entorno({ [UVA]: PUNTOS });
+  const bueno = c.entorno.fetch;
+  let n = 0;
+  c.entorno.fetch = (url, init) => {
+    if (++n === 1) throw new Error('boom síncrono');
+    return bueno(url, init);
+  };
+  await falla(() => c.uva(), /boom síncrono/, 'primera llamada:');
+  reloj += 61_000;
+  const r = await c.uva();
+  igual([r.datos, n], [PUNTOS, 2], 'segunda llamada:');
+});
+
+caso('enfriamiento: tras una falla no se vuelve a llamar por 60 s (sin valor guardado: repite el error)', async () => {
+  entorno({ [UVA]: new Error('caída') });
+  await falla(() => c.uva(), /caída/);
+  reloj += 60_000 - 1;
+  await falla(() => c.uva(), /caída/, 'dentro del enfriamiento:');
+  igual(llamadas.length, 1, 'llamadas dentro del enfriamiento:');
+  reloj += 1;
+  await falla(() => c.uva(), /caída/, 'a los 60 s:');
+  igual(llamadas.length, 2, 'llamadas a los 60 s:');
+});
+
+caso('enfriamiento: con valor guardado y la API caída devuelve lo guardado, obsoleto, sin llamar', async () => {
+  let cuerpo = PUNTOS;
+  entorno(() => cuerpo);
+  await c.uva();
+  cuerpo = new Error('caída');
+  reloj += 13 * HORA;
+  const a = await c.uva();
+  const b = await c.uva();
+  igual([a.obsoleto, b.obsoleto, b.datos, llamadas.length], [true, true, PUNTOS, 2], 'durante la caída:');
+  reloj += 60_000;
+  await c.uva();
+  igual(llamadas.length, 3, 'pasado el enfriamiento:');
+});
+
+caso('async: la validación de entrada rechaza la promesa, no tira síncrono', async () => {
+  entorno({});
+  const llamadasMalas = [
+    () => c.historiaDolar('MAL!'),
+    () => c.cotizacionDolarEn('blue', '2024-02-31'),
+    () => c.historiaMoneda('EURO'),
+    () => c.feriados('20x6'),
+  ];
+  for (const f of llamadasMalas) {
+    let p;
+    try {
+      p = f();
+    } catch (e) {
+      throw new Error(`tiró síncrono: ${e.message}`);
+    }
+    await falla(() => p, /inválida/);
+  }
+  igual(llamadas.length, 0, 'llamadas:');
 });
 
 // ── Salida ────────────────────────────────────────────────────────────────────
