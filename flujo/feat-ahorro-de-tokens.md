@@ -11,9 +11,10 @@ como es un programa aparte, el instalador no lo instala: avisa si falta y explic
 
 *Debe*
 
-1. **La descripción de caveman y su regla 8 no dicen lo mismo sobre el reporte final.** *No se
-   pudo resolver: lo encontró la segunda vuelta de la revisión, y el tope son 2 vueltas.* El
-   revisor lo puso como opcional; va acá porque así lo pide el flujo para lo que queda abierto.
+1. **La descripción de caveman y su regla 8 no dicen lo mismo sobre el reporte final.**
+   **Resuelto por decisión del dueño** después del tope de vueltas: la regla 8 quedó como "Final
+   report or summary", sin condición, igual que la descripción. Lo encontró la segunda vuelta de
+   la revisión; el revisor lo puso como opcional.
    - **El problema:** la descripción dice que caveman no se usa en ningún reporte final. La regla
      8 del cuerpo sólo exceptúa el reporte para quien no lee código. Con caveman prendido, un
      reporte final pedido por alguien que programa puede salir en un estilo o en el otro.
@@ -35,7 +36,7 @@ Ninguno.
    - **El arreglo:** sumar la forma nueva cuando aparezca.
    - **Si no se arregla:** un consejo de más en la instalación. No rompe nada.
 
-**Veredicto:** se puede presentar. El hallazgo 1 es de redacción y no afecta a quien no programa.
+**Veredicto:** se puede presentar. No queda ningún hallazgo abierto en Debe ni en Conviene.
 
 **Lo que no se revisó**
 
@@ -237,5 +238,5 @@ Microsoft Store, que no ejecuta nada.
 - [x] La 2.9 sumada al plan y marcada como hecha (`docs/plan-de-mejoras.md`).
 - [x] Rebase sobre `origin/main`, sin conflictos de texto. Las reglas nuevas del Paso 5 se
   cumplieron después: el reporte llano y la revisión independiente.
-- [ ] Hallazgo 1 del reporte (descripción vs. regla 8 de caveman): lo decide el dueño.
+- [x] Hallazgo 1 del reporte (descripción vs. regla 8 de caveman): el dueño decidió alinearlas.
 - [ ] Publicar: lo decide el dueño.
