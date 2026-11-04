@@ -157,6 +157,9 @@ De ahí sale la primera de las tres pruebas que tenés que dejar.
 Corré los controles que el proyecto declara, **en el orden que los declara**, y reportá **los
 números que devolvieron**. No "pasa todo".
 
+Si una herramienta te resumió la salida y el número no aparece, volvé a correr el control sin
+resumir. Un número que no viste no se reporta.
+
 ⚠️ **Y no te confíes de los controles que corren en un servidor.** Un control que no corrió no es
 un control — y su resultado puede verse igual que un fracaso real. Si un control falla en pocos
 segundos, o no deja registro, sospechá de que nunca arrancó antes de sospechar de tu código. Lo

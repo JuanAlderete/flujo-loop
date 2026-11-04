@@ -8,6 +8,7 @@
  *      idénticas a su origen).
  *   2. Escribe los dos enganches en el archivo de configuración, **conservando** lo que ya
  *      hubiera ahí.
+ *   3. Recomienda rtk si falta (sólo lo recomienda: no lo instala).
  *
  * Lo segundo es el motivo de que esto sea un script y no una instrucción. El archivo de
  * configuración es estructurado: editarlo a mano y equivocarse en una coma deja la herramienta
@@ -32,9 +33,10 @@
 
 import {
   mkdirSync, readdirSync, readFileSync, writeFileSync, copyFileSync, existsSync, statSync,
+  accessSync, constants,
 } from 'node:fs';
 import { createHash } from 'node:crypto';
-import { dirname, join, relative } from 'node:path';
+import { delimiter, dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { homedir } from 'node:os';
 
@@ -186,6 +188,60 @@ if (!SIMULAR) {
   writeFileSync(rutaAjustes, JSON.stringify(ajustes, null, 2) + '\n', 'utf8');
 }
 
+// ── 3 · rtk, recomendado ──────────────────────────────────────────────────────
+//
+//  rtk ahorra tokens comprimiendo la salida de los comandos. Es un programa aparte, distinto por
+//  sistema operativo, así que acá sólo se mira si está y se recomienda. 🔑 Nunca se baja ni se
+//  escribe su enganche: eso es de `rtk init -g`, y escribirlo desde acá ataría el instalador a
+//  una versión de rtk que no controla.
+
+const recomendaciones = [];
+
+/** Si hay un `rtk` ejecutable en alguna carpeta del PATH. */
+function rtkEnElPath() {
+  const enWindows = process.platform === 'win32';
+  const extensiones = enWindows
+    ? (process.env.PATHEXT || '.EXE;.CMD;.BAT').split(';').filter(Boolean)
+    : [''];
+  return (process.env.PATH || '')
+    .split(delimiter)
+    .filter(Boolean)
+    .some((carpeta) =>
+      extensiones.some((ext) => {
+        try {
+          accessSync(join(carpeta, `rtk${ext}`), enWindows ? constants.F_OK : constants.X_OK);
+          return true;
+        } catch {
+          return false;
+        }
+      }),
+    );
+}
+
+/**
+ * Si la configuración ya tiene el enganche de rtk (el que escribe `rtk init -g`). Hoy es
+ * `rtk hook claude`; versiones anteriores registraban un script `rtk-rewrite.sh`.
+ */
+function rtkEnganchado() {
+  return Object.values(ajustes.hooks)
+    .filter(Array.isArray)
+    .flat()
+    .flatMap((g) => (Array.isArray(g?.hooks) ? g.hooks : []))
+    .some((c) => /\brtk(\.exe)?["']?\s+hook\b|\brtk-rewrite\b/i.test(String(c.command || '')));
+}
+
+if (!rtkEnElPath()) {
+  recomendaciones.push(
+    'rtk no está instalado. Es opcional y ahorra tokens: comprime la salida de los comandos ' +
+      'antes de que la lea el agente. Cómo instalarlo: https://github.com/rtk-ai/rtk',
+  );
+} else if (!rtkEnganchado()) {
+  recomendaciones.push(
+    'rtk está instalado pero sin su enganche, así que no comprime nada. Para activarlo, ' +
+      'corré: rtk init -g',
+  );
+}
+
 // ── Salida ────────────────────────────────────────────────────────────────────
 
 console.log(SIMULAR ? 'SIMULACIÓN — no se tocó nada. Se haría:' : 'Instalado:');
@@ -194,6 +250,11 @@ for (const h of hechos) console.log(`  - ${h}`);
 if (avisos.length > 0) {
   console.log('\nAvisos:');
   for (const a of avisos) console.log(`  ! ${a}`);
+}
+
+if (recomendaciones.length > 0) {
+  console.log('\nRecomendado:');
+  for (const r of recomendaciones) console.log(`  · ${r}`);
 }
 
 if (!SIMULAR) {

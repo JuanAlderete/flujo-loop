@@ -17,6 +17,10 @@
  *      coincide con los hashes de su origen, o trae un archivo que su origen no tiene, el
  *      instalador se niega y NO instala nada. Es lo que se instala sin que nadie lo lea: una
  *      actualización ajena o un archivo agregado (OWASP Agentic Skills Top 10, AST01 y AST07).
+ *   Absent      → rtk no está en el PATH: se recomienda con su link, sin bloquear
+ *   Duplicate   → rtk ya tiene su enganche: no se dice nada y el enganche se conserva
+ *   🔑 ESCRIBE EL ENGANCHE DE OTRO → el de rtk es de rtk (`rtk init -g`). El instalador sólo
+ *      lo sugiere: si lo escribiera él, quedaría atado a una versión de rtk que no controla.
  *
  * ⚠️ El destino se pasa por variable de entorno a propósito. Una prueba que corre contra la
  * configuración real del que instala **la modifica** — ya pasó en este proyecto: un intento de
@@ -25,7 +29,7 @@
  */
 
 import { spawnSync } from 'node:child_process';
-import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync } from 'node:fs';
+import { mkdirSync, writeFileSync, readFileSync, rmSync, existsSync, chmodSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -256,6 +260,117 @@ caso('🔑 una skill de afuera con un archivo que su origen no tiene: se niega',
   afirmar(r.code !== 0, `tenía que negarse y salió en ${r.code}`);
   afirmar(!existsSync(join(d, 'skills')), 'copió skills igual');
   afirmar(r.out.includes('extra.sh'), `no nombró el archivo de más: ${r.out}`);
+});
+
+// ── Ahorro de tokens: caveman y rtk ───────────────────────────────────────────
+//
+//  rtk es un programa aparte: el instalador sólo mira si está en el PATH y recomienda. Nunca lo
+//  baja y nunca escribe su enganche (eso lo hace `rtk init -g`, que es de rtk). Para que estos
+//  casos no dependan de la máquina que los corre, el PATH lo arma cada caso.
+
+/** Una carpeta con un `rtk` falso adentro, para poner en el PATH. */
+function carpetaConRtk(nombre) {
+  const c = join(BASE, nombre);
+  mkdirSync(c, { recursive: true });
+  const archivo = join(c, process.platform === 'win32' ? 'rtk.exe' : 'rtk');
+  writeFileSync(archivo, '');
+  chmodSync(archivo, 0o755);
+  return c;
+}
+
+/** Una carpeta vacía: un PATH sin rtk. */
+function carpetaVacia(nombre) {
+  const c = join(BASE, nombre);
+  mkdirSync(c, { recursive: true });
+  return c;
+}
+
+/**
+ * Corre el instalador con un PATH elegido. En Windows la variable puede llamarse `Path`: se saca
+ * cualquier variante antes de poner la propia, para que no queden dos.
+ */
+function instalarConPath(destino, path, ...args) {
+  const env = Object.fromEntries(
+    Object.entries(process.env).filter(([k]) => k.toUpperCase() !== 'PATH'),
+  );
+  const r = spawnSync(process.execPath, [INSTALADOR, ...args], {
+    env: { ...env, PATH: path, FLUJO_LOOP_DESTINO: destino },
+    encoding: 'utf8',
+  });
+  return { code: r.status, out: (r.stdout || '') + (r.stderr || '') };
+}
+
+const LINK_RTK = 'https://github.com/rtk-ai/rtk';
+
+caso('instala caveman como una skill más', () => {
+  const d = destinoLimpio('caveman');
+  const r = instalar(d);
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+  afirmar(existsSync(join(d, 'skills', 'caveman', 'SKILL.md')), 'no copió caveman');
+});
+
+caso('sin rtk: lo recomienda con el link, y no como un aviso', () => {
+  const d = destinoLimpio('sin-ahorro');
+  const r = instalarConPath(d, carpetaVacia('path-sin-rtk'));
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+  afirmar(/Recomendado:/.test(r.out), `no hubo sección de recomendaciones: ${r.out}`);
+  afirmar(/rtk no está instalado/.test(r.out), `no dijo que falta rtk: ${r.out}`);
+  afirmar(r.out.includes(LINK_RTK), `no dio el link de rtk: ${r.out}`);
+  afirmar(!/Avisos:/.test(r.out), `lo trató como un aviso: ${r.out}`);
+});
+
+caso('con rtk y sin su enganche: sugiere rtk init -g y no lo escribe él', () => {
+  const d = destinoLimpio('ahorro-sin-enganche');
+  const r = instalarConPath(d, carpetaConRtk('path-con-rtk'));
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+  afirmar(r.out.includes('rtk init -g'), `no sugirió el comando: ${r.out}`);
+  afirmar(!/rtk no está instalado/.test(r.out), `dijo que falta y está: ${r.out}`);
+  const texto = readFileSync(join(d, 'settings.json'), 'utf8');
+  afirmar(!/rtk/i.test(texto), `escribió algo de rtk en la configuración: ${texto}`);
+});
+
+caso('con rtk y su enganche puesto: no dice nada de rtk, y conserva su enganche', () => {
+  const d = destinoLimpio('ahorro-con-enganche');
+  mkdirSync(d, { recursive: true });
+  const enganche = '"C:/tools/rtk/rtk.exe" hook claude';
+  writeFileSync(
+    join(d, 'settings.json'),
+    JSON.stringify({
+      hooks: { PreToolUse: [{ matcher: 'Bash', hooks: [{ type: 'command', command: enganche }] }] },
+    }),
+  );
+  const r = instalarConPath(d, carpetaConRtk('path-con-rtk-2'));
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+  afirmar(!/rtk/i.test(r.out), `habló de rtk sin motivo: ${r.out}`);
+  afirmar(readFileSync(join(d, 'settings.json'), 'utf8').includes('rtk.exe'), 'borró el de rtk');
+});
+
+//  Versiones anteriores de `rtk init -g` registraban un script (`rtk-rewrite.sh`) en vez de
+//  `rtk hook claude`. Sin reconocerlo, a quien lo tiene se le diría que rtk "no comprime nada".
+caso('con rtk y el enganche viejo (rtk-rewrite.sh): no dice nada de rtk', () => {
+  const d = destinoLimpio('ahorro-enganche-viejo');
+  mkdirSync(d, { recursive: true });
+  writeFileSync(
+    join(d, 'settings.json'),
+    JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          { matcher: 'Bash', hooks: [{ type: 'command', command: '~/.claude/hooks/rtk-rewrite.sh' }] },
+        ],
+      },
+    }),
+  );
+  const r = instalarConPath(d, carpetaConRtk('path-con-rtk-3'));
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+  afirmar(!/rtk/i.test(r.out), `habló de rtk sin motivo: ${r.out}`);
+});
+
+caso('en simulación también recomienda rtk, sin tocar nada', () => {
+  const d = destinoLimpio('simulacion-ahorro');
+  const r = instalarConPath(d, carpetaVacia('path-simulacion'), '--simular');
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+  afirmar(r.out.includes(LINK_RTK), `no recomendó rtk: ${r.out}`);
+  afirmar(!existsSync(join(d, 'settings.json')), 'escribió la configuración');
 });
 
 // ── Salida ────────────────────────────────────────────────────────────────────

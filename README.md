@@ -45,8 +45,9 @@ Y si querés ver qué va a hacer antes de que lo haga:
 node instalar.mjs --simular
 ```
 
-El instalador hace dos cosas: copia las skills a tu configuración de Claude Code, y escribe
-los dos enganches en tu archivo de configuración **conservando lo que ya tuvieras ahí**.
+El instalador hace tres cosas: copia las skills a tu configuración de Claude Code, escribe
+los enganches en tu archivo de configuración **conservando lo que ya tuvieras ahí**, y te
+recomienda rtk si no lo tenés (ver [Ahorrar tokens](#ahorrar-tokens-caveman-y-rtk)).
 
 | skill | qué es |
 |---|---|
@@ -60,6 +61,7 @@ los dos enganches en tu archivo de configuración **conservando lo que ya tuvier
 | `skill-scanner` | escanea una skill de afuera. Copia fija de getsentry/skills, con `allowed-tools` recortado: su script se corre pasando por el pedido de permiso. **Su salida son pistas, no un aprobado** |
 | `revision-independiente` | la revisión de **corrección** antes de presentar, hecha por un revisor nuevo que no vio la conversación (dos si el cambio toca plata, datos o permisos). Aparte de la de seguridad. Propia |
 | `seguridad-de-skills` | qué revisar antes de sumar, actualizar o escribir una skill, según el **OWASP Agentic Skills Top 10** |
+| `caveman` | **opcional**: respuestas más cortas, para gastar menos tokens. Se activa con `/caveman` y se apaga con "stop caveman". Ver [Ahorrar tokens](#ahorrar-tokens-caveman-y-rtk) |
 
 > 🔑 **Las skills copiadas de otro repo se instalan sólo si siguen idénticas a su fuente.** Cada
 > una trae un `ORIGEN.json` con el commit exacto y el hash de cada archivo. Si algo no coincide,
@@ -91,6 +93,25 @@ tu configuración una sola vez y **cada repo decide** si juega.
 Abrí Claude Code en un repo que tenga el marcador, escribí `/` y tiene que aparecer `flujo-loop`
 en la lista. Si no aparece, revisá que la carpeta se llame exactamente así y que adentro esté el
 `SKILL.md`.
+
+### Ahorrar tokens: caveman y rtk
+
+Las dos son **opcionales**. El flujo funciona igual sin ellas.
+
+- **caveman** acorta lo que escribe el agente: saca los saludos, los resúmenes y el relleno, y
+  conserva todos los datos técnicos. **No se activa sola**: escribí `/caveman` cuando la quieras,
+  y "stop caveman" para volver a lo normal. Sus propias reglas dejan en prosa completa las
+  preguntas que te hace, los avisos de seguridad, lo que no tiene vuelta atrás y todo lo que queda
+  guardado (código, commits, el rastro). Si te cuesta entender una respuesta, apagala: le ahorra
+  tokens al agente, pero no te tiene que costar a vos.
+- **rtk** comprime la salida de los comandos antes de que la lea el agente. Es un programa
+  aparte, así que el instalador **no lo instala**: si no lo tenés, te avisa con el link
+  ([rtk-ai/rtk](https://github.com/rtk-ai/rtk)). Una vez instalado, `rtk init -g` le pone su
+  enganche, y `rtk gain` muestra cuánto ahorraste.
+
+> ⚠️ **rtk y los números de los controles.** El rastro exige los números que devolvió cada
+> control. rtk resume la salida de algunos comandos de tests. Si en la salida resumida no está el
+> conteo, el agente tiene que correr el control sin resumir: `rtk bypass <comando>`.
 
 ## Qué hace, una vez instalado
 
