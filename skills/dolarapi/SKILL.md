@@ -43,8 +43,11 @@ investiga ni se reimplementa: se copia.**
 - Dólares actuales: **una** llamada a `/v1/dolares` trae todas las casas. Nunca una por casa.
 - Caché en memoria: 15 min lo actual, 12 h la historia y los índices. Las consultas simultáneas
   comparten una sola llamada.
-- Una respuesta con forma inesperada (no es lista, o falta `valor`) cuenta como falla: no pisa el
-  último valor bueno.
+- Una respuesta con forma inesperada cuenta como falla: no pisa el último valor bueno. Es mala si
+  una lista está vacía o algún ítem no es un objeto con el campo clave (`casa`/`moneda` y `venta`
+  número o null en las cotizaciones actuales; `fecha` en historias y feriados; `fecha` y `valor`
+  número en los índices; `entidad` en plazo fijo), o si un objeto suelto no trae `fecha` y
+  `venta`/`valor`.
 - Tras una falla, esa URL descansa 60 s: durante ese tiempo devuelve el último valor guardado
   (`obsoleto: true`) o repite el error, sin llamar a la API.
 - Historia: sólo la casa pedida. Nunca el volcado completo (~3 MB).

@@ -105,7 +105,7 @@ caso('dolar(casa): una casa que no existe es un error claro', async () => {
 
 caso('dolares: una respuesta que no es una lista es un error', async () => {
   entorno({ [`${U}/dolares`]: { mensaje: 'x' } });
-  await falla(() => c.dolares(), /lista/);
+  await falla(() => c.dolares(), /forma esperada/);
 });
 
 
@@ -184,7 +184,7 @@ const HIST = [
 ];
 
 caso('historiaDolar: pide sólo la casa pedida, nunca el volcado completo', async () => {
-  entorno({ [`${A}/cotizaciones/dolares/blue`]: HIST, [`${A}/cotizaciones/dolares/oficial`]: [] });
+  entorno({ [`${A}/cotizaciones/dolares/blue`]: HIST, [`${A}/cotizaciones/dolares/oficial`]: HIST });
   const r = await c.historiaDolar('blue');
   igual(llamadas, [`${A}/cotizaciones/dolares/blue`]);
   igual(r.datos.length, 3);
@@ -205,7 +205,7 @@ caso('historiaDolar: se cachea 12 h (a las 12 h menos 1 ms no llama, a las 12 h 
 });
 
 caso('historiaDolar: acepta solidario (sólo historia) y rechaza una casa mal escrita sin llamar', async () => {
-  entorno({ [`${A}/cotizaciones/dolares/solidario`]: [] });
+  entorno({ [`${A}/cotizaciones/dolares/solidario`]: HIST });
   await c.historiaDolar('solidario');
   igual(llamadas.length, 1);
   for (const mala of ['../finanzas', 'Blue', '', 'blue/2024']) {
@@ -301,7 +301,7 @@ const INDICES = [
 
 for (const [fn, url] of INDICES) {
   caso(`${fn}: una llamada a ${url.replace(A, '')}, cacheada 12 h`, async () => {
-    const punto = { fecha: '2026-10-31', valor: 2.5 };
+    const punto = { fecha: '2026-10-31', valor: 2.5, entidad: 'Banco X' }; // `entidad` es la clave de plazoFijo
     entorno({ [url]: fn === 'riesgoPaisUltimo' ? punto : [punto] }); // el "último" es un objeto, no una lista
     const r = await c[fn]();
     igual(llamadas, [url]);
@@ -316,7 +316,7 @@ for (const [fn, url] of INDICES) {
 }
 
 caso('feriados: /feriados/{año}, un año por llamada; rechaza lo que no es un año', async () => {
-  entorno({ [`${A}/feriados/2026`]: [{ fecha: '2026-01-01', tipo: 'inamovible', nombre: 'Año nuevo' }], [`${A}/feriados/2025`]: [] });
+  entorno({ [`${A}/feriados/2026`]: [{ fecha: '2026-01-01', tipo: 'inamovible', nombre: 'Año nuevo' }], [`${A}/feriados/2025`]: [{ fecha: '2025-01-01', tipo: 'inamovible', nombre: 'Año nuevo' }] });
   const r = await c.feriados(2026);
   igual(llamadas, [`${A}/feriados/2026`]);
   igual(r.datos[0].nombre, 'Año nuevo');
@@ -531,6 +531,73 @@ caso('async: la validación de entrada rechaza la promesa, no tira síncrono', a
     await falla(() => p, /inválida/);
   }
   igual(llamadas.length, 0, 'llamadas:');
+});
+
+// ── Forma profunda: vacío o basura no pisa el último valor bueno ─────────────
+
+for (const [nombre, malo] of [['[]', []], ['[null]', [null]], ['[{}]', [{}]], ['[1]', [1]]]) {
+  caso(`forma profunda: /dolares ${nombre} después de uno bueno devuelve el anterior, obsoleto`, async () => {
+    let cuerpo = DOLARES;
+    entorno(() => cuerpo);
+    const bueno = await c.dolares();
+    cuerpo = malo;
+    reloj += 16 * MIN;
+    const r = await c.dolar('blue');
+    igual([r.obsoleto, r.datos.casa, r.actualizado], [true, 'blue', bueno.actualizado], `tras ${nombre}:`);
+  });
+}
+
+caso('forma profunda: una lista vacía en caché fría es un error claro', async () => {
+  entorno({ [`${U}/dolares`]: [] });
+  await falla(() => c.dolares(), /no hay valor guardado.*forma esperada/);
+});
+
+caso('forma profunda: un ítem con venta de texto invalida la lista; venta null es válida', async () => {
+  let cuerpo = [{ moneda: 'USD', casa: 'x', venta: null }];
+  entorno(() => cuerpo);
+  igual((await c.dolares()).datos.length, 1, 'venta null:');
+  cuerpo = [{ moneda: 'USD', casa: 'x', venta: '1500' }];
+  reloj += 16 * MIN;
+  igual((await c.dolares()).obsoleto, true, 'venta de texto:');
+});
+
+caso('forma profunda: cotizacionDolarEn {} y {message} en caché fría son un error claro', async () => {
+  const url = `${A}/cotizaciones/dolares/blue/2024/05/10`;
+  for (const cuerpo of [{}, { message: 'x' }]) {
+    entorno({ [url]: cuerpo });
+    await falla(() => c.cotizacionDolarEn('blue', '2024-05-10'), /no hay valor guardado.*forma esperada/, JSON.stringify(cuerpo));
+  }
+});
+
+caso('forma profunda: cotizacionDolarEn {} después de uno bueno devuelve el anterior', async () => {
+  const url = `${A}/cotizaciones/dolares/blue/2024/05/10`;
+  const bueno = { casa: 'blue', compra: 1, venta: null, fecha: '2024-05-10' };
+  let cuerpo = bueno;
+  entorno(() => cuerpo);
+  await c.cotizacionDolarEn('blue', '2024-05-10');
+  cuerpo = {};
+  reloj += 13 * HORA;
+  const r = await c.cotizacionDolarEn('blue', '2024-05-10');
+  igual([r.obsoleto, r.datos], [true, bueno], 'tras {}:');
+  igual(llamadas, [url, url]);
+});
+
+caso('forma profunda: cada endpoint rechaza una lista vacía', async () => {
+  const llamadasA = [
+    [() => c.monedas(), `${U}/cotizaciones`],
+    [() => c.historiaDolar('blue'), `${A}/cotizaciones/dolares/blue`],
+    [() => c.historiaMoneda('EUR'), `${A}/cotizaciones/eur`],
+    [() => c.inflacionMensual(), `${A}/finanzas/indices/inflacion`],
+    [() => c.riesgoPais(), `${A}/finanzas/indices/riesgo-pais`],
+    [() => c.plazoFijo(), `${A}/finanzas/tasas/plazoFijo`],
+    [() => c.feriados(2026), `${A}/feriados/2026`],
+  ];
+  for (const [f, url] of llamadasA) {
+    entorno({ [url]: [] });
+    await falla(f, /forma esperada/, url);
+    entorno({ [url]: [{}] });
+    await falla(f, /forma esperada/, `${url} [{}]:`);
+  }
 });
 
 // ── Salida ────────────────────────────────────────────────────────────────────

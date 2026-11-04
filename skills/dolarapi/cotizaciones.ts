@@ -30,9 +30,12 @@ const ACTUAL = 15 * 60_000; // cotizaciones actuales: 15 min
 const HISTORIA = 12 * 60 * 60_000; // historia e índices: 12 h
 const ENFRIAMIENTO = 60_000; // tras una falla, esa URL no se vuelve a pedir por 60 s
 
-const lista = (d: unknown) => Array.isArray(d);
-const objeto = (d: unknown) => typeof d === 'object' && d !== null && !Array.isArray(d);
-const conValor = (d: unknown) => objeto(d) && typeof (d as { valor?: unknown }).valor === 'number';
+const objeto = (d: unknown): d is Record<string, unknown> => typeof d === 'object' && d !== null && !Array.isArray(d);
+/** Un objeto con `campo` de texto y, si se pide, `numero` numérico (o null si `nulo`). */
+const con = (campo: string, numero?: string, nulo = false) => (d: unknown) =>
+  objeto(d) && typeof d[campo] === 'string' && (numero === undefined || typeof d[numero] === 'number' || (nulo && d[numero] === null));
+/** Una lista NO vacía donde cada ítem cumple `con(...)`: [] o basura no pisa el último valor bueno. */
+const listaCon = (...a: Parameters<typeof con>) => (d: unknown) => Array.isArray(d) && d.length > 0 && d.every(con(...a));
 
 const guardado = new Map<string, { datos: unknown; en: number }>();
 const enVuelo = new Map<string, Promise<Resultado<unknown>>>();
@@ -61,7 +64,7 @@ function pedir<T>(url: string, ttl: number, forma: (d: unknown) => boolean): Pro
       const r = await entorno.fetch(url, { signal: AbortSignal.timeout(10_000) });
       if (!r.ok) throw new Error(`HTTP ${r.status}`);
       const datos = await r.json();
-      if (!forma(datos)) throw new Error('la respuesta no tiene la forma esperada (una lista o un objeto con valor)');
+      if (!forma(datos)) throw new Error('la respuesta no tiene la forma esperada (vacía o sin los campos que usa esta skill)');
       const nuevo = { datos, en: entorno.ahora() };
       guardado.set(url, nuevo);
       fallos.delete(url);
@@ -86,7 +89,7 @@ function resultado<T>(g: { datos: unknown; en: number }, obsoleto: boolean): Res
 }
 
 export async function dolares(): Promise<Resultado<Cotizacion[]>> {
-  return pedir<Cotizacion[]>(`${DOLARAPI}/dolares`, ACTUAL, lista);
+  return pedir<Cotizacion[]>(`${DOLARAPI}/dolares`, ACTUAL, listaCon('casa', 'venta', true));
 }
 
 export async function dolar(casa: Casa): Promise<Resultado<Cotizacion>> {
@@ -116,7 +119,7 @@ function validar(valor: string, patron: RegExp, que: string): string {
 
 export async function historiaDolar(casa: CasaHistoria): Promise<Resultado<PuntoDolar[]>> {
   validar(casa, /^[a-z]+$/, 'Casa');
-  return pedir(`${ARGENTINADATOS}/cotizaciones/dolares/${casa}`, HISTORIA, lista);
+  return pedir(`${ARGENTINADATOS}/cotizaciones/dolares/${casa}`, HISTORIA, listaCon('fecha'));
 }
 
 /** La cotización de un día ('AAAA-MM-DD'). Fines de semana y feriados también tienen dato. */
@@ -124,20 +127,20 @@ export async function cotizacionDolarEn(casa: CasaHistoria, fecha: string): Prom
   validar(casa, /^[a-z]+$/, 'Casa');
   const [a, m, d] = validar(fecha, /^\d{4}-\d{2}-\d{2}$/, 'Fecha').split('-');
   if (new Date(Date.UTC(+a, +m - 1, +d)).toISOString().slice(0, 10) !== fecha) throw new Error(`Fecha inválida: "${fecha}"`);
-  return pedir(`${ARGENTINADATOS}/cotizaciones/dolares/${casa}/${a}/${m}/${d}`, HISTORIA, objeto);
+  return pedir(`${ARGENTINADATOS}/cotizaciones/dolares/${casa}/${a}/${m}/${d}`, HISTORIA, con('fecha', 'venta', true));
 }
 
 // ── Otras monedas ─────────────────────────────────────────────────────────────
 
 /** USD, EUR, BRL, CLP y UYU, de una sola llamada. */
 export function monedas(): Promise<Resultado<Cotizacion[]>> {
-  return pedir(`${DOLARAPI}/cotizaciones`, ACTUAL, lista);
+  return pedir(`${DOLARAPI}/cotizaciones`, ACTUAL, listaCon('moneda', 'venta', true));
 }
 
 /** Desde 2023-10-22. */
 export async function historiaMoneda(moneda: string): Promise<Resultado<PuntoMoneda[]>> {
   validar(moneda, /^[A-Za-z]{3}$/, 'Moneda');
-  return pedir(`${ARGENTINADATOS}/cotizaciones/${moneda.toLowerCase()}`, HISTORIA, lista);
+  return pedir(`${ARGENTINADATOS}/cotizaciones/${moneda.toLowerCase()}`, HISTORIA, listaCon('fecha'));
 }
 
 // ── Series para gráficos ──────────────────────────────────────────────────────
@@ -168,15 +171,15 @@ export function ultimosDias(puntos: Punto[], n: number): Punto[] {
 // ── Índices, tasas y feriados (ArgentinaDatos) ────────────────────────────────
 
 /** Mensual, en %. Un ítem por mes, con la fecha del último día del mes. */
-export const inflacionMensual = () => pedir<Punto[]>(`${ARGENTINADATOS}/finanzas/indices/inflacion`, HISTORIA, lista);
+export const inflacionMensual = () => pedir<Punto[]>(`${ARGENTINADATOS}/finanzas/indices/inflacion`, HISTORIA, listaCon('fecha', 'valor'));
 /** Interanual, en %. */
-export const inflacionInteranual = () => pedir<Punto[]>(`${ARGENTINADATOS}/finanzas/indices/inflacionInteranual`, HISTORIA, lista);
+export const inflacionInteranual = () => pedir<Punto[]>(`${ARGENTINADATOS}/finanzas/indices/inflacionInteranual`, HISTORIA, listaCon('fecha', 'valor'));
 /** El último valor del riesgo país, en puntos básicos. */
-export const riesgoPaisUltimo = () => pedir<Punto>(`${ARGENTINADATOS}/finanzas/indices/riesgo-pais/ultimo`, HISTORIA, conValor);
+export const riesgoPaisUltimo = () => pedir<Punto>(`${ARGENTINADATOS}/finanzas/indices/riesgo-pais/ultimo`, HISTORIA, con('fecha', 'valor'));
 /** Toda la serie del riesgo país (desde 1999, ~400 KB). */
-export const riesgoPais = () => pedir<Punto[]>(`${ARGENTINADATOS}/finanzas/indices/riesgo-pais`, HISTORIA, lista);
+export const riesgoPais = () => pedir<Punto[]>(`${ARGENTINADATOS}/finanzas/indices/riesgo-pais`, HISTORIA, listaCon('fecha', 'valor'));
 /** Valor diario de la UVA en pesos (desde 2016-03-31, ~200 KB). */
-export const uva = () => pedir<Punto[]>(`${ARGENTINADATOS}/finanzas/indices/uva`, HISTORIA, lista);
+export const uva = () => pedir<Punto[]>(`${ARGENTINADATOS}/finanzas/indices/uva`, HISTORIA, listaCon('fecha', 'valor'));
 
 export type TasaPlazoFijo = {
   entidad: string;
@@ -185,12 +188,12 @@ export type TasaPlazoFijo = {
   tasas: Array<{ plazoMinDias: number | null; plazoMaxDias: number | null; tna: number | null }>;
 };
 /** Tasas (TNA como fracción: 0.2 = 20 %) por banco. */
-export const plazoFijo = () => pedir<TasaPlazoFijo[]>(`${ARGENTINADATOS}/finanzas/tasas/plazoFijo`, HISTORIA, lista);
+export const plazoFijo = () => pedir<TasaPlazoFijo[]>(`${ARGENTINADATOS}/finanzas/tasas/plazoFijo`, HISTORIA, listaCon('entidad'));
 
 export type Feriado = { fecha: string; tipo: string; nombre: string };
 export async function feriados(anio: number | string): Promise<Resultado<Feriado[]>> {
   validar(String(anio), /^\d{4}$/, 'Año');
-  return pedir(`${ARGENTINADATOS}/feriados/${anio}`, HISTORIA, lista);
+  return pedir(`${ARGENTINADATOS}/feriados/${anio}`, HISTORIA, listaCon('fecha'));
 }
 
 // ── Cuentas ───────────────────────────────────────────────────────────────────
