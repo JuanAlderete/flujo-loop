@@ -277,13 +277,14 @@ caso('hoyAR: la fecha de Argentina, no la de UTC', () => {
   reloj = Date.UTC(2026, 10, 4, 15, 0);
 });
 
-caso('ultimosDias: el corte es la fecha argentina; incluye el día de corte; no corre días', () => {
+caso('ultimosDias: exactamente n días de calendario hasta hoy en Argentina; sin fechas futuras', () => {
   entorno({});
-  const s = ['2026-10-27', '2026-10-28', '2026-11-03', '2026-11-04'].map((fecha) => ({ fecha, valor: 1 }));
+  const s = ['2026-10-27', '2026-10-28', '2026-10-29', '2026-11-03', '2026-11-04', '2026-11-05'].map((fecha) => ({ fecha, valor: 1 }));
   reloj = Date.UTC(2026, 10, 5, 1, 0); // en UTC ya es el 5, en Buenos Aires todavía el 4
-  igual(c.ultimosDias(s, 7).map((p) => p.fecha), ['2026-10-28', '2026-11-03', '2026-11-04'], 'N=7 con hoy=4:');
-  igual(c.ultimosDias(s, 0).map((p) => p.fecha), ['2026-11-04'], 'N=0:');
-  igual(c.ultimosDias(s, 1).map((p) => p.fecha), ['2026-11-03', '2026-11-04'], 'N=1:');
+  igual(c.ultimosDias(s, 7).map((p) => p.fecha), ['2026-10-29', '2026-11-03', '2026-11-04'], 'N=7 con hoy=4 (29/10 a 4/11):');
+  igual(c.ultimosDias(s, 6).map((p) => p.fecha), ['2026-11-03', '2026-11-04'], 'N=6 (30/10 a 4/11):');
+  igual(c.ultimosDias(s, 1).map((p) => p.fecha), ['2026-11-04'], 'N=1:');
+  igual(c.ultimosDias(s, 0).map((p) => p.fecha), [], 'N=0:');
   reloj = Date.UTC(2026, 10, 4, 15, 0);
 });
 

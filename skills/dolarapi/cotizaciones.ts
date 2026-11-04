@@ -157,11 +157,12 @@ export function hoyAR(): string {
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'America/Argentina/Buenos_Aires' }).format(entorno.ahora());
 }
 
-/** Los puntos de los últimos `n` días, contando hoy en Argentina. Incluye el día de corte. */
+/** Los puntos de los últimos `n` días de calendario, hasta hoy en Argentina inclusive. Descarta las fechas futuras. */
 export function ultimosDias(puntos: Punto[], n: number): Punto[] {
-  const [a, m, d] = hoyAR().split('-').map(Number);
-  const corte = new Date(Date.UTC(a, m - 1, d - n)).toISOString().slice(0, 10);
-  return puntos.filter((p) => p.fecha >= corte);
+  const hoy = hoyAR();
+  const [a, m, d] = hoy.split('-').map(Number);
+  const corte = new Date(Date.UTC(a, m - 1, d - n + 1)).toISOString().slice(0, 10);
+  return puntos.filter((p) => p.fecha >= corte && p.fecha <= hoy);
 }
 
 // ── Índices, tasas y feriados (ArgentinaDatos) ────────────────────────────────
