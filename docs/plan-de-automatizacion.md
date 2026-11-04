@@ -12,6 +12,21 @@ final, y cuando un control frena algo peligroso o falta una decisión de la pers
 > Las decisiones salen del `/grilling` del 2026-11-04, en tres rondas (Q1 a Q16). Todas se
 > aceptaron como estaban recomendadas.
 
+## Para retomar (desde cualquier máquina)
+
+Estado al 2026-11-04: el plan está escrito y acordado; no hay nada implementado. Todo el contexto
+está en este archivo y en `flujo/docs-plan-de-automatizacion.md`. No depende de la memoria del
+agente: la de esa sesión no se pudo guardar.
+
+1. Mergear el PR #11 (este plan), si no se mergeó todavía.
+2. `git clone https://github.com/JuanAlderete/flujo-loop` o `git pull` en `main`.
+3. Paso 0: `node instalar.mjs --simular` para ver qué hace, y después `node instalar.mjs`.
+   Reemplaza las copias locales de `grilling`, `test-driven-development` y `caveman`, y avisa
+   cada una.
+4. Pedirle al agente: "seguí con el punto 1 de `docs/plan-de-automatizacion.md`". Las decisiones
+   ya están tomadas (tabla final): no hace falta otro `/grilling`, salvo que una tarea abra una
+   decisión que no esté ahí.
+
 ---
 
 ## Por qué: lo que pasó en la sesión del 2026-11-04
