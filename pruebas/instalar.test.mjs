@@ -345,6 +345,26 @@ caso('con rtk y su enganche puesto: no dice nada de rtk, y conserva su enganche'
   afirmar(readFileSync(join(d, 'settings.json'), 'utf8').includes('rtk.exe'), 'borró el de rtk');
 });
 
+//  Versiones anteriores de `rtk init -g` registraban un script (`rtk-rewrite.sh`) en vez de
+//  `rtk hook claude`. Sin reconocerlo, a quien lo tiene se le diría que rtk "no comprime nada".
+caso('con rtk y el enganche viejo (rtk-rewrite.sh): no dice nada de rtk', () => {
+  const d = destinoLimpio('ahorro-enganche-viejo');
+  mkdirSync(d, { recursive: true });
+  writeFileSync(
+    join(d, 'settings.json'),
+    JSON.stringify({
+      hooks: {
+        PreToolUse: [
+          { matcher: 'Bash', hooks: [{ type: 'command', command: '~/.claude/hooks/rtk-rewrite.sh' }] },
+        ],
+      },
+    }),
+  );
+  const r = instalarConPath(d, carpetaConRtk('path-con-rtk-3'));
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.out}`);
+  afirmar(!/rtk/i.test(r.out), `habló de rtk sin motivo: ${r.out}`);
+});
+
 caso('en simulación también recomienda rtk, sin tocar nada', () => {
   const d = destinoLimpio('simulacion-ahorro');
   const r = instalarConPath(d, carpetaVacia('path-simulacion'), '--simular');

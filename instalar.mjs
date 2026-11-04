@@ -218,13 +218,16 @@ function rtkEnElPath() {
     );
 }
 
-/** Si la configuración ya tiene el enganche de rtk (el que escribe `rtk init -g`). */
+/**
+ * Si la configuración ya tiene el enganche de rtk (el que escribe `rtk init -g`). Hoy es
+ * `rtk hook claude`; versiones anteriores registraban un script `rtk-rewrite.sh`.
+ */
 function rtkEnganchado() {
   return Object.values(ajustes.hooks)
     .filter(Array.isArray)
     .flat()
     .flatMap((g) => (Array.isArray(g?.hooks) ? g.hooks : []))
-    .some((c) => /\brtk(\.exe)?["']?\s+hook\b/i.test(String(c.command || '')));
+    .some((c) => /\brtk(\.exe)?["']?\s+hook\b|\brtk-rewrite\b/i.test(String(c.command || '')));
 }
 
 if (!rtkEnElPath()) {

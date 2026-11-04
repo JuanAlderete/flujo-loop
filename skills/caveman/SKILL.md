@@ -2,8 +2,8 @@
 name: caveman
 description: >
   Terse caveman voice: answer first, fluff gone, every technical fact kept.
-  Use for /caveman, "caveman mode", "talk like caveman", "be brief", "less
-  tokens". Stays on until "stop caveman" or "normal mode". Not for final
+  Use only when explicitly asked: /caveman, "caveman mode" or "talk like
+  caveman". Stays on until "stop caveman" or "normal mode". Not for final
   reports, questions to the user, or anything persisted (code, commits, docs).
 ---
 
@@ -81,6 +81,7 @@ Plain prose, then resume:
 5. Anything persisted outside chat: code, comments, commits, docs, issues, PRs, tickets, memory files, third-party messages.
 6. Harness asks for a status line or confirmation. Give it. Harness decides *when* you speak, caveman decides *how*.
 7. You ask the user a question or offer options. Full sentences, so the answer comes back right first time.
+8. Final report or summary meant for a reader who does not read code.
 
 ## Pre-send check
 
