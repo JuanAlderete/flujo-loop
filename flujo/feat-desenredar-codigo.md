@@ -57,7 +57,7 @@ engancharla al Paso 4 de `flujo-loop`.
 | 6 · Extras Comentarios y Tests en una sola pregunta; nunca se borran tests | Un test que no atraparía un error sólo se señala; lo decide la persona |
 | 7 · Hasta 2 vueltas de re-chequeo con subagentes; un hallazgo no amplía el alcance | Reemplaza "repetir hasta que no quede nada"; regla de `flujo-loop` |
 | 8 · Mapea las tres pruebas de `flujo-loop` | Fallo = pruebas de caracterización en verde + línea base; mutación = romper una costura; números = mismos conteos |
-| 9 · Ya no es un punto del Paso 3 | Reemplazada por la 17: va en el Paso 4 |
+| 9 · Mención en el Paso 3 — reemplazada por la decisión 17: paso en el Paso 4 | Ya no es un punto del Paso 3; va en el Paso 4, antes de los controles |
 | 10 · Requisitos en `pruebas/check.mjs` y la skill en la lista de `instalar.test.mjs`, con RED observado antes | TDD del repo |
 | 11 · Rama `feat/desenredar-codigo` y este rastro como documento de tareas | Precedente de `flujo/feat-reporte-llano.md` |
 | 12 · Fila en el README con crédito al origen | El README lista todas las skills |
@@ -123,7 +123,45 @@ Hash = 16 primeros caracteres de sha256. Restaurado desde una copia; la suite vo
 | T1 · RED: requisitos, caso del hook y lista del instalador | inline | fallos textuales arriba | incluido en T2 y T3 (tests junto al comportamiento) |
 | T2 · Skill, `LICENSE`, fila del README y sus requisitos | inline (un solo escritor) | `check.mjs` 194, `instalar.test.mjs` 17 | `3c8eeeb` feat(desenredar-codigo): add skill with full and scoped modes |
 | T3 · Paso 4, recordatorio del hook y sus pruebas | inline | `check.mjs` 195, `hook.test.mjs` 114 | `bb7179e` feat(flujo-loop): run desenredar-codigo scoped mode before the final controls |
-| T4 · Este rastro | inline | los cuatro controles en verde | ver `git log` (docs(flujo)) |
+| T4 · Este rastro | inline | los cuatro controles en verde | `e956f21` docs(flujo): trace for desenredar-codigo |
+| T5 · Judgment-day ronda 1: texto de la skill y sus requisitos | un solo escritor delegado | `check.mjs` 195 → 198 | `555e971` fix(desenredar-codigo): order scoped pass after the task commit, define scope terms and Fase B revert |
+| T6 · Judgment-day ronda 1: Paso 4, recordatorio del hook y sus pruebas | un solo escritor delegado | `hook.test.mjs` 114 → 114 (más afirmaciones en un caso) | `65ec331` fix(flujo-loop): align Paso 4 and hook reminder with the scoped pass rules |
+| T7 · Este ajuste del rastro | inline | los cuatro controles en verde | ver `git log` (docs(flujo)) |
 
-- [x] T1  - [x] T2  - [x] T3  - [x] T4
-- Pendiente: `ai-workflow` lo cambia quien coordina, fuera de este repo.
+- [x] T1  - [x] T2  - [x] T3  - [x] T4  - [x] T5  - [x] T6  - [x] T7
+- `ai-workflow` ya no está pendiente: quien coordina lo editó en
+  `C:\Users\Mulinho\.agents\skills\ai-workflow\SKILL.md` (paso 4 nuevo de desenredado y una
+  sección "Untangle tasks"). Está fuera del repo, no se versiona; queda una copia `SKILL.md.bak`.
+
+## Judgment-day, ronda 1
+
+Veredicto: APROBADO, 0 críticos. Advertencias confirmadas por los dos jueces y arregladas:
+
+- **JD-1 · orden y reversión del modo acotado.** El trabajo de la tarea va primero en su propio
+  commit; la pasada trabaja encima, sin guardar, y si un control falla se restauran uno por uno
+  sólo los archivos que la pasada cambió (y se borran los que creó), sin tocar la tarea.
+- **JD-2 · términos ambiguos.** "Archivos que tocó la tarea" = los del diff de su commit; las
+  interfaces públicas no cambian; los tests cuentan como código y nunca se borran; se saltea sólo
+  si no hubo código o el cambio no suma lógica (se quitó el criterio "una línea").
+- **JD-4 · falla en la Fase B.** Si las pruebas de caracterización o los controles se ponen en
+  rojo tras un arreglo, se revierte ese arreglo, se anota en el reporte y se sigue con el
+  siguiente; nunca se parchea encima.
+- **JD-5 · rastro.** Éste: SHA de T4, decisión 9 aclarada, `ai-workflow` ya no pendiente.
+- **Arreglos en `ai-workflow`** (fuera del repo): los extras incluyen Tests; "OK, esperar" figura
+  como excepción.
+- **Sugerencias aplicadas.** S-1: el flujo invoca `/desenredar-codigo acotado`; sin argumento o
+  con un área es el modo completo (también en `argument-hint`). S-2: en el recordatorio el
+  desenredado es su propia línea numerada, antes de los controles, que quedan incondicionales
+  (la última puerta pasó a ser la 6). S-3: requisitos más estrictos con su condición.
+
+Controles tras la ronda: `check.mjs` `OK  198 chequeos, sin fallas.` (195 antes),
+`--self-test` `OK  40 casos del verificador, sin fallas.` (40 antes), `hook.test.mjs`
+`OK  114 casos, sin fallas.` (114 antes), `instalar.test.mjs` `OK  17 casos, sin fallas.` (17 antes),
+`instalar.mjs --simular` sin tocar nada.
+
+RED observado antes del texto: `FALLA  7 de 198 chequeos` en `check.mjs` y `FALLA  1 de 114 casos`
+en `hook.test.mjs` (`el contexto no invoca /desenredar-codigo acotado`).
+
+Mutación: en `skills/desenredar-codigo/SKILL.md`, "ya guardado en su propio commit" pasó a
+"ya hecho" → `FALLA  1 de 198 chequeos` (`falta /ya\s+guardado\s+en\s+su\s+propio\s+commit/`);
+restaurado, volvió a `OK  198 chequeos`.
