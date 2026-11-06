@@ -329,6 +329,80 @@ const REQUISITOS = [
       /el\s+mismo\s+texto,\s+más\s+la\s+línea\s+final\s+de\s+`\/no-entendi`,\s+que\s+va\s+sólo\s+en\s+el\s+chat/,
     ],
   }],
+  ['desenredar-codigo', 'se invoca a mano o por el agente, con dos modos nombrados en la descripción y pista del área', {
+    lineas: 8,
+    patrones: [/user-invocable: true/, /argument-hint:/, /modo completo/i, /modo acotado/i],
+  }],
+  ['desenredar-codigo', 'acredita a caldoai/skills untangle-codebase y su commit', {
+    patrones: [/caldoai\/skills/, /untangle-codebase/, /f3cf47774975a7d9fca45730babf4ff7ad765ada/],
+  }],
+  ['desenredar-codigo', 'los extras se preguntan en una sola pregunta y nunca borran tests: el que no atraparía un error sólo se señala', {
+    desde: '## Los extras', hasta: '## Fase A',
+    patrones: [
+      /una sola pregunta/,
+      /Nunca borrás tests/,
+      CERCA('no atraparía', 'lo decide la persona', 300),
+      /Comentarios/,
+    ],
+  }],
+  ['desenredar-codigo', 'la Fase A es sólo lectura y se frena hasta el OK de la persona', {
+    desde: '## Fase A', hasta: '## Fase B',
+    patrones: [
+      /No cambiás ningún archivo/,
+      /vínculos ocultos/i, /vínculos de más/i, /sobrante/i, /casos especiales/,
+      /registro de decisiones/,
+      FRASE('Esperá el OK de la persona'),
+    ],
+  }],
+  ['desenredar-codigo', 'la Fase B arregla de a uno: pruebas de caracterización en verde antes de tocar, y un commit por arreglo', {
+    desde: '## Fase B', hasta: '## Re-chequeo',
+    patrones: [
+      /pruebas de caracterización/,
+      /en verde antes de tocar el código/,
+      /su propio commit/i,
+    ],
+  }],
+  ['desenredar-codigo', 'el re-chequeo tiene tope de 2 vueltas y un hallazgo no amplía el alcance', {
+    desde: '## Re-chequeo', hasta: '## Modo acotado',
+    patrones: [
+      /\*\*Hasta 2 vueltas\*\*/,
+      CERCA('2 vueltas', 'subagentes', 300),
+      /Un hallazgo no autoriza ampliar el alcance/,
+    ],
+  }],
+  ['desenredar-codigo', 'el modo acotado toca sólo los archivos de la tarea, sin pedir OK; lo de afuera sólo se anota', {
+    desde: '## Modo acotado', hasta: '## Las tres pruebas',
+    patrones: [
+      /Sólo los archivos que tocó la tarea/,
+      /sin pedir OK/,
+      CERCA('afuera de esos archivos', 'sólo se anota', 200),
+    ],
+  }],
+  ['desenredar-codigo', 'el modo acotado se saltea si no hubo código o el cambio es trivial, y anota por qué en el rastro', {
+    desde: '## Modo acotado', hasta: '## Las tres pruebas',
+    patrones: [
+      /Se saltea/,
+      /no cambió código/,
+      /trivial/,
+      CERCA('Se saltea', 'rastro', 600),
+    ],
+  }],
+  ['desenredar-codigo', 'el modo acotado reorganiza sin cambiar el comportamiento, revierte la pasada entera si algo falla y va en commit aparte', {
+    desde: '## Modo acotado', hasta: '## Las tres pruebas',
+    patrones: [
+      /no cambiás el comportamiento/,
+      /pruebas de caracterización/,
+      /controles completos del proyecto/,
+      /revertís la pasada entera/,
+      /no la parchees/,
+      /commit aparte/,
+      /Nunca borrás tests/,
+    ],
+  }],
+  ['desenredar-codigo', 'mapea las tres pruebas de flujo-loop: fallo observado, mutación y números', {
+    desde: '## Las tres pruebas',
+    patrones: [/fallo observado/, /mutación/, /números/, /línea base/],
+  }],
   ['seguridad-de-skills', 'pide skill-scanner cada vez que entra o se actualiza una skill de afuera', {
     patrones: [/skill-scanner/],
   }],
