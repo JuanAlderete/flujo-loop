@@ -154,6 +154,13 @@ De ahí sale la primera de las tres pruebas que tenés que dejar.
 
 ## Paso 4 · Antes de decir que terminaste: los controles
 
+**Antes de correr los controles, ordená lo que tocaste.** Cuando la tarea cambió código y sus
+tests ya están en verde, con el trabajo de la tarea ya guardado en su propio commit, ejecutá
+`/desenredar-codigo acotado` (modo acotado) sobre los archivos que tocó la tarea: deja ese código
+sin enredos, sin cambiar lo que hace ni las interfaces públicas que usan otros archivos, y va en un
+commit aparte. Los tests cuentan como código. Si la tarea no cambió código, o el cambio no suma
+lógica (sólo nombres, formato o valores), se saltea y el rastro anota por qué.
+
 Corré los controles que el proyecto declara, **en el orden que los declara**, y reportá **los
 números que devolvieron**. No "pasa todo".
 

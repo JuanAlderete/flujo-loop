@@ -156,12 +156,16 @@ Antes de cambiar nada, invocá la skill \`flujo-loop\` y seguí su orden. En res
    confirman con la persona antes de seguir (Paso 0).
 1. \`/grilling\` ANTES de tener la solución pensada. Se ejecuta el comando, no se lee la skill.
 2. \`/test-driven-development\` al EMPEZAR a implementar, no al terminar.
-3. Los controles que declara el proyecto, reportando los números que dieron.
-4. El rastro en \`${CARPETA_RASTRO}/<rama>.md\`, commiteado, con las tres pruebas:
+3. Antes de los controles, con la tarea ya guardada en su commit, si cambió código (los tests
+   cuentan como código): \`/desenredar-codigo acotado\` (modo acotado) sobre los archivos que
+   tocó, sin cambiar lo que hace ni sus interfaces públicas. Si no suma lógica (sólo nombres,
+   formato o valores), se saltea y el rastro anota por qué.
+4. Los controles que declara el proyecto, reportando los números que dieron.
+5. El rastro en \`${CARPETA_RASTRO}/<rama>.md\`, commiteado, con las tres pruebas:
    el fallo textual observado antes de implementar, la mutación verificada (y la confirmación
    de que se aplicó), y los números de cada control. Más lo que NO se pudo verificar. Y como
    PRIMERA sección, el reporte en lenguaje llano (Paso 5).
-5. La última puerta: se presenta UNA sola vez, terminado, con los controles en verde y la
+6. La última puerta: se presenta UNA sola vez, terminado, con los controles en verde y la
    revisión de seguridad hecha. Tu mensaje final en el chat es ese mismo reporte llano: qué hace
    el cambio, hallazgos numerados (Debe, Conviene, Opcional), veredicto y lo que no se revisó.
    Antes de presentar, siempre \`/revision-independiente\`: un revisor que no vio la

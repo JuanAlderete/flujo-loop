@@ -126,7 +126,7 @@ caso('el recordatorio nombra el Paso 0, la última puerta y /seguridad-de-skills
   const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
   //  Estaba desfasado: enumeraba 1 a 4 y la persona nunca se enteraba del resto del procedimiento.
   afirmar(/^0\. .*controles/m.test(ctx), 'el contexto no nombra el Paso 0 (declarar los controles)');
-  afirmar(/^5\. .*última puerta/m.test(ctx), 'el contexto no nombra el Paso 5 (la última puerta)');
+  afirmar(/^6\. .*última puerta/m.test(ctx), 'el contexto no nombra el Paso 5 (la última puerta)');
   afirmar(ctx.includes('/seguridad-de-skills'), 'el contexto no nombra /seguridad-de-skills');
   afirmar(ctx.includes('/revision-independiente'), 'el contexto no nombra /revision-independiente');
   afirmar(/plata, datos o permisos/.test(ctx), 'el contexto no nombra el segundo revisor (plata, datos o permisos)');
@@ -138,6 +138,19 @@ caso('el recordatorio dice que el rastro abre con el reporte llano, también com
   const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
   afirmar(/reporte (en lenguaje )?llano/i.test(ctx), 'el contexto no nombra el reporte en lenguaje llano');
   afirmar(/mensaje final/i.test(ctx), 'el contexto no dice que el reporte es el mensaje final');
+});
+
+caso('el recordatorio manda desenredar en modo acotado antes de los controles', () => {
+  const d = repo('recordatorio-desenredar');
+  const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
+  afirmar(/\/desenredar-codigo[\s\S]{0,120}modo acotado/.test(ctx), 'el contexto no nombra /desenredar-codigo en modo acotado');
+  afirmar(/\/desenredar-codigo acotado/.test(ctx), 'el contexto no invoca /desenredar-codigo acotado');
+  afirmar(/no\s+suma\s+lógica/.test(ctx) && /tests\s+cuentan\s+como\s+código/.test(ctx), 'el contexto no dice cuándo se saltea ni que los tests cuentan');
+  const items = ctx.split(/\n(?=\d+\. )/);
+  const nDesenredar = items.findIndex((i) => i.includes('/desenredar-codigo'));
+  const nControles = items.findIndex((i) => /^\d+\. Los controles que declara/.test(i));
+  afirmar(nDesenredar >= 0, 'el desenredado no es una línea numerada propia');
+  afirmar(nControles > nDesenredar, 'los controles no son un ítem numerado propio, después del desenredado');
 });
 
 caso('el recordatorio manda ofrecer /no-entendi al cerrar un mensaje largo', () => {
