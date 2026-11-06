@@ -2,7 +2,7 @@
 name: desenredar-codigo
 description: "Desenredar el código: encuentra las piezas que cambian juntas sin que se note, las atadas de más y lo sobrante, y las arregla sin cambiar lo que el código hace. Modo completo cuando la persona lo pide (con un área opcional); modo acotado, sólo sobre los archivos tocados, al terminar una tarea que cambió código. No la uses para arreglar bugs ni sumar funciones."
 user-invocable: true
-argument-hint: "[área o preocupación opcional]"
+argument-hint: "[acotado | área o preocupación opcional]"
 ---
 
 # Desenredar el código
@@ -18,8 +18,12 @@ contesta mal es un enredo.
 
 - **Modo completo**: `/desenredar-codigo [área]`. Lo pide la persona. Todo el código, o el área
   que indique. Primero diagnóstico, después el OK de la persona, después los arreglos.
-- **Modo acotado**: lo corrés vos al terminar una tarea que cambió código (Paso 4 de
-  `flujo-loop`). Sólo los archivos de la tarea, sin pedir OK. Ver [Modo acotado](#modo-acotado).
+- **Modo acotado**: `/desenredar-codigo acotado`. Lo corrés vos al terminar una tarea que cambió
+  código (Paso 4 de `flujo-loop`). Sólo los archivos de la tarea, sin pedir OK. Ver
+  [Modo acotado](#modo-acotado).
+
+El modo se elige por el argumento: `acotado` es el modo acotado; sin argumento o con un área es
+el modo completo.
 
 ## Los extras
 
@@ -87,6 +91,10 @@ Cada arreglo del registro aprobado es **una unidad**:
 3. Los controles del proyecto.
 4. Su propio commit, con un mensaje `refactor: ...` que nombra el arreglo.
 
+Si después del cambio las pruebas de caracterización o los controles se ponen en rojo, revertí
+ese arreglo (restaurá uno por uno los archivos que cambió y borrá los que creó), anotalo en el
+reporte y seguí con el siguiente. Nunca lo parchees encima.
+
 Los casos especiales que el rediseño vuelve innecesarios se sacan; los que el sistema todavía
 necesita se quedan. No busques bugs aparte: si un arreglo estructural arregla uno de paso, bien,
 y lo anotás.
@@ -107,23 +115,32 @@ mismo que al empezar.
 ## Modo acotado
 
 Corre al final de cada tarea que cambió código, **después** de que los tests de la tarea están en
-verde y **antes** de los controles finales.
+verde y **antes** de los controles finales. El flujo la invoca con `/desenredar-codigo acotado`.
 
-**Sólo los archivos que tocó la tarea.** Buscá en ellos las mismas tres clases de enredo y
-arreglalos **sin pedir OK**. Lo que encuentres afuera de esos archivos sólo se anota en el
-reporte y en el rastro; no se arregla.
+**Antes de empezar**, tenés el trabajo de la tarea ya guardado en su propio commit. La pasada
+trabaja encima de ese commit, sin guardar nada.
+
+**Sólo los archivos que tocó la tarea**: los que están en el diff del commit de la tarea. Buscá en
+ellos las mismas tres clases de enredo y arreglalos **sin pedir OK**. Podés reorganizar lo que haga
+falta dentro de esos archivos, pero no cambiás nombres, firmas ni comportamiento que usen otros
+archivos: las interfaces públicas quedan como están. Si hace falta cambiar una, sólo va al
+reporte. Lo que encuentres afuera de esos archivos sólo se anota en el reporte y en el rastro; no
+se arregla.
+
+**Los tests cuentan como código**: una tarea que sólo cambió tests igual recibe la pasada.
 
 **Se saltea** (y el rastro anota que se salteó y por qué) si la tarea no cambió código (sólo
-documentación, configuración o texto) o si el cambio es trivial (una línea, o sólo un cambio de
-nombre).
+documentación, configuración o texto) o si el cambio no suma lógica (sólo nombres, formato, o
+valores de texto o constantes).
 
 **Red de seguridad**:
 1. Reorganizás, no cambiás el comportamiento.
 2. Si el código tocado no tiene tests, primero escribí pruebas de caracterización que fijen lo
    que hace hoy, y recién entonces cambiás.
 3. Corré los controles completos del proyecto.
-4. Si algo falla, **revertís la pasada entera** y no la parchees: la tarea queda como estaba
-   antes de la pasada, y el rastro anota qué falló.
+4. Si algo falla, **revertís la pasada entera** y no la parchees: restaurás uno por uno sólo los
+   archivos que la pasada cambió, y borrás los que creó, hasta volver al commit de la tarea.
+   Nunca tocás el trabajo de la tarea. El rastro anota qué falló.
 5. Va en un commit aparte, `refactor: ...`, separado del commit de la tarea.
 6. Nunca borrás tests.
 
