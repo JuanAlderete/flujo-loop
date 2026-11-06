@@ -403,6 +403,13 @@ const REQUISITOS = [
     desde: '## Las tres pruebas',
     patrones: [/fallo observado/, /mutación/, /números/, /línea base/],
   }],
+  ['flujo-loop', 'el Paso 4 corre /desenredar-codigo en modo acotado sobre lo que tocó la tarea, antes de los controles, y anota el salteo', {
+    desde: '## Paso 4', hasta: '## Paso 5',
+    patrones: [
+      /Antes de correr los controles[\s\S]{0,500}`\/desenredar-codigo`[\s\S]{0,200}modo acotado[\s\S]{0,300}archivos\s+que\s+tocó\s+la\s+tarea/,
+      /se saltea[\s\S]{0,300}rastro/,
+    ],
+  }],
   ['seguridad-de-skills', 'pide skill-scanner cada vez que entra o se actualiza una skill de afuera', {
     patrones: [/skill-scanner/],
   }],

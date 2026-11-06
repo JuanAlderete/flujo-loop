@@ -156,7 +156,9 @@ Antes de cambiar nada, invocá la skill \`flujo-loop\` y seguí su orden. En res
    confirman con la persona antes de seguir (Paso 0).
 1. \`/grilling\` ANTES de tener la solución pensada. Se ejecuta el comando, no se lee la skill.
 2. \`/test-driven-development\` al EMPEZAR a implementar, no al terminar.
-3. Los controles que declara el proyecto, reportando los números que dieron.
+3. Antes de los controles, si la tarea cambió código: \`/desenredar-codigo\` en modo acotado
+   sobre los archivos que tocó, sin cambiar lo que hace.
+   Los controles que declara el proyecto, reportando los números que dieron.
 4. El rastro en \`${CARPETA_RASTRO}/<rama>.md\`, commiteado, con las tres pruebas:
    el fallo textual observado antes de implementar, la mutación verificada (y la confirmación
    de que se aplicó), y los números de cada control. Más lo que NO se pudo verificar. Y como

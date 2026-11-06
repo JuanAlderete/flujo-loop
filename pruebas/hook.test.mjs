@@ -140,6 +140,13 @@ caso('el recordatorio dice que el rastro abre con el reporte llano, también com
   afirmar(/mensaje final/i.test(ctx), 'el contexto no dice que el reporte es el mensaje final');
 });
 
+caso('el recordatorio manda desenredar en modo acotado antes de los controles', () => {
+  const d = repo('recordatorio-desenredar');
+  const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
+  afirmar(/\/desenredar-codigo[\s\S]{0,120}modo acotado/.test(ctx), 'el contexto no nombra /desenredar-codigo en modo acotado');
+  afirmar(ctx.indexOf('/desenredar-codigo') < ctx.indexOf('Los controles que declara'), 'el desenredado no va antes de los controles');
+});
+
 caso('el recordatorio manda ofrecer /no-entendi al cerrar un mensaje largo', () => {
   const d = repo('recordatorio-no-entendi');
   const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
