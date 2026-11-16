@@ -60,6 +60,7 @@ recomienda rtk si no lo tenés (ver [Ahorrar tokens](#ahorrar-tokens-caveman-y-r
 | `secret-serialization` | busca secretos que se filtran al serializar (logs, `JSON.stringify`, `repr`). Copia fija de getsentry/skills, sin cambios |
 | `skill-scanner` | escanea una skill de afuera. Copia fija de getsentry/skills, con `allowed-tools` recortado: su script se corre pasando por el pedido de permiso. **Su salida son pistas, no un aprobado** |
 | `revision-independiente` | la revisión de **corrección** antes de presentar, hecha por un revisor nuevo que no vio la conversación (dos si el cambio toca plata, datos o permisos). Aparte de la de seguridad. Propia |
+| `desenredar-codigo` | desenreda el código sin cambiar lo que hace: encuentra lo que cambia junto sin que se note, lo atado de más y lo sobrante. **Modo completo** (`/desenredar-codigo [área]`): diagnóstico, tu OK y arreglos de a uno con pruebas antes de cada cambio. **Modo acotado**: al terminar una tarea que cambió código, sólo sobre los archivos tocados. Nunca borra tests. Propia, basada en `untangle-codebase` de [caldoai/skills](https://github.com/caldoai/skills) (MIT, licencia en su carpeta) |
 | `seguridad-de-skills` | qué revisar antes de sumar, actualizar o escribir una skill, según el **OWASP Agentic Skills Top 10** |
 | `caveman` | **opcional**: respuestas más cortas, para gastar menos tokens. Se activa con `/caveman` y se apaga con "stop caveman". Ver [Ahorrar tokens](#ahorrar-tokens-caveman-y-rtk) |
 
