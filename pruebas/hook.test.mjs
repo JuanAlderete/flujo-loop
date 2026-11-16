@@ -126,7 +126,10 @@ caso('el recordatorio nombra el Paso 0, la última puerta y /seguridad-de-skills
   const ctx = JSON.parse(correr('UserPromptSubmit', d).out).hookSpecificOutput?.additionalContext ?? '';
   //  Estaba desfasado: enumeraba 1 a 4 y la persona nunca se enteraba del resto del procedimiento.
   afirmar(/^0\. .*controles/m.test(ctx), 'el contexto no nombra el Paso 0 (declarar los controles)');
-  afirmar(/^6\. .*última puerta/m.test(ctx), 'el contexto no nombra el Paso 5 (la última puerta)');
+  //  El ítem 6 del recordatorio es el Paso 5 de la skill: sin decirlo, los dos números se confunden.
+  afirmar(/^6\. La última puerta \(Paso 5\)/m.test(ctx), 'el ítem 6 no dice que la última puerta es el Paso 5 de la skill');
+  //  Lo mismo con el ítem 3: el desenredado vive en el Paso 4 de la skill, no en el 3 ("Mientras implementás").
+  afirmar(/^3\. \(Paso 4\) .*\n?.*\/desenredar-codigo acotado/m.test(ctx), 'el ítem 3 no dice que el desenredado es parte del Paso 4 de la skill');
   afirmar(ctx.includes('/seguridad-de-skills'), 'el contexto no nombra /seguridad-de-skills');
   afirmar(ctx.includes('/revision-independiente'), 'el contexto no nombra /revision-independiente');
   afirmar(/plata, datos o permisos/.test(ctx), 'el contexto no nombra el segundo revisor (plata, datos o permisos)');

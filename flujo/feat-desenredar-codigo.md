@@ -165,3 +165,26 @@ en `hook.test.mjs` (`el contexto no invoca /desenredar-codigo acotado`).
 Mutación: en `skills/desenredar-codigo/SKILL.md`, "ya guardado en su propio commit" pasó a
 "ya hecho" → `FALLA  1 de 198 chequeos` (`falta /ya\s+guardado\s+en\s+su\s+propio\s+commit/`);
 restaurado, volvió a `OK  198 chequeos`.
+
+## Revisión antes del merge (2026-11-16)
+
+Hallazgo (Conviene): con el desenredado como ítem 3, el recordatorio numeraba "6. La última
+puerta" mientras la skill la llama "Paso 5", y el test decía "Paso 5" sobre la línea `6.`. Arreglo:
+la línea dice "6. La última puerta (Paso 5)".
+
+RED: el test pasó a exigir `/^6\. La última puerta \(Paso 5\)/m` → `FALLA  1 de 114 casos`
+(`el ítem 6 no dice que la última puerta es el Paso 5 de la skill`). Esa corrida es también la
+mutación: sin "(Paso 5)" en el hook, el caso cae.
+
+GREEN, controles: `check.mjs` `OK  198 chequeos, sin fallas.`, `--self-test`
+`OK  40 casos del verificador, sin fallas.`, `hook.test.mjs` `OK  114 casos, sin fallas.`,
+`instalar.test.mjs` `OK  17 casos, sin fallas.`
+
+Revisión independiente (un revisor ciego, sin plata/datos/permisos): sin Debe ni Conviene. Un
+Opcional, verificado y aplicado: el ítem 3 (`/desenredar-codigo acotado`) es parte del Paso 4 de la
+skill, no del 3 ("Mientras implementás"); la línea pasa a "3. (Paso 4) ...". RED: el test exige
+`3. (Paso 4)` antes de `/desenredar-codigo acotado` → `FALLA  1 de 114 casos` (`el ítem 3 no dice
+que el desenredado es parte del Paso 4 de la skill`). GREEN: `check.mjs` `OK  198 chequeos, sin
+fallas.`, `--self-test` `OK  40 casos del verificador, sin fallas.`, `hook.test.mjs`
+`OK  114 casos, sin fallas.`, `instalar.test.mjs` `OK  17 casos, sin fallas.` Las referencias
+"(Paso 0)" y "(Paso 5)" restantes coinciden con los títulos de la skill (verificado por el revisor).
