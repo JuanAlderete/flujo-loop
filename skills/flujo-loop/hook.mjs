@@ -9,6 +9,8 @@
  *   `Stop`             → no deja declarar "listo" si hay trabajo sin rastro, o si el rastro no
  *                        trae sus encabezados (sólo que estén, nunca lo que dicen). No mira
  *                        `stop_hook_active`: mientras la condición siga, bloquea cada vez.
+ *                        Sólo cuenta lo que escribió ESTA sesión (ver tocadosPorLaSesion): un
+ *                        cambio de otra sesión en el mismo checkout no la traba.
  *   `PreToolUse`       → el guardrail: frena los comandos de git que borran trabajo sin vuelta
  *                        atrás, o que lo publican, y los comandos que escriben en la base de
  *                        producción (lista fija). Ver más abajo.
@@ -26,8 +28,8 @@
  * y se calla. Eso incluye un rastro que existe pero no se puede leer.
  */
 
-import { existsSync, readFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { basename, dirname, isAbsolute, join, relative, resolve } from 'node:path';
 import { spawnSync } from 'node:child_process';
 
 const MARCADOR = '.flujo-loop';
@@ -118,7 +120,10 @@ function estadoGit(raiz) {
   const rama = git(raiz, 'rev-parse', '--abbrev-ref', 'HEAD')?.trim();
   if (!rama || rama === 'HEAD') return null; // no se pudo preguntar, sin rama, o cabeza suelta
 
-  const estado = git(raiz, 'status', '--porcelain');
+  //  `-uall`: una carpeta nueva lista sus archivos y no sólo `?? carpeta/`, y `quotePath=false`: un
+  //  nombre con tilde o ñ sale tal cual y no escapado. Sin los dos, lo que escribió la sesión no
+  //  coincidía con lo que dice git, y el Stop lo dejaba pasar (revisión independiente, 2026-11-17).
+  const estado = git(raiz, '-c', 'core.quotePath=false', 'status', '--porcelain', '-uall');
   if (estado === null) return null;
 
   const rutas = new Set();
@@ -135,7 +140,7 @@ function estadoGit(raiz) {
   //  por eso se usa para NO bloquear, nunca para bloquear de más.
   const arriba = git(raiz, 'rev-parse', '--abbrev-ref', '@{upstream}')?.trim();
   if (arriba) {
-    const diff = git(raiz, 'diff', '--name-only', `${arriba}...HEAD`);
+    const diff = git(raiz, '-c', 'core.quotePath=false', 'diff', '--name-only', `${arriba}...HEAD`);
     if (diff !== null) for (const r of diff.split('\n')) if (r.trim()) rutas.add(r.trim());
   }
 
@@ -146,6 +151,89 @@ function estadoGit(raiz) {
   //  Con barra normal a proposito: es como lo escribe el control de versiones y como se lee
   //  en cualquier sistema. La ruta igual sirve para buscar el archivo en disco.
   return { rastro: `${CARPETA_RASTRO}/${rama.replace(/\//g, '-')}.md`, pendientes };
+}
+
+/** Una ruta del repo, comparable: barra normal y, en Windows, sin distinguir mayúsculas. */
+const comparable = (r) => {
+  const n = r.replace(/\\/g, '/');
+  return process.platform === 'win32' ? n.toLowerCase() : n;
+};
+
+const HERRAMIENTAS_QUE_ESCRIBEN = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit']);
+const SHELLS = new Set(['Bash', 'PowerShell']);
+
+/**
+ * Un comando de shell que ESCRIBE archivos: redirección, `tee`, `sed -i`, copiar o mover, aplicar
+ * un parche, restaurar de otra rama, o escribir desde node o PowerShell. Se equivoca de más (un
+ * `2>&1` cuenta como escritura), nunca de menos con lo que nombra: es el lado seguro.
+ */
+const ESCRIBE = /(^|[^<>-])>>?|\btee\b|\bsed\s+-i|\b(cp|mv|install|touch|patch)\b|\bgit\s+(apply|am|restore|checkout\b[^\n]*\s--\s)|writeFileSync|appendFileSync|Set-Content|Add-Content|Out-File|New-Item|Copy-Item|Move-Item/i;
+
+/**
+ * Lo que ESTA sesión escribió en el repo, sacado del historial que Claude Code le pasa al hook
+ * (`transcript_path`) y de los de sus subagentes (`<carpeta>/<id de sesión>/subagents/*.jsonl`):
+ * los archivos que tocó con Write/Edit/MultiEdit/NotebookEdit, y los comandos de shell que
+ * escriben (un archivo pendiente que uno de ellos nombra cuenta como propio).
+ *
+ * `null` si no llegó historial (otro cliente): el Stop mira todo, como antes. Si llegó pero no se
+ * puede leer, NO es "mirar todo": es un dato que no se pudo obtener, y el hook se calla (vacío).
+ *
+ * Decisión del dueño (2026-11-17): "la recomendada, solo lo que tocó la sesión". Mirando todo el
+ * checkout, el cambio sin commitear de UNA sesión trababa en loop a todas las demás del mismo repo.
+ *
+ * ⚠️ Lo que no ve: código que genera un script (npm, un generador) sin que el comando nombre el
+ * archivo, y lo que escriben herramientas de MCP.
+ */
+function tocadosPorLaSesion(transcriptPath, raiz) {
+  if (typeof transcriptPath !== 'string' || transcriptPath === '') return null;
+  const historiales = [transcriptPath];
+  try {
+    const sub = join(dirname(transcriptPath), basename(transcriptPath, '.jsonl'), 'subagents');
+    if (existsSync(sub)) {
+      for (const f of readdirSync(sub)) if (f.endsWith('.jsonl')) historiales.push(join(sub, f));
+    }
+  } catch {
+    //  sin subagentes legibles: queda el historial principal
+  }
+  const base = resolve(raiz);
+  const tocados = new Set();
+  const comandos = [];
+  let leido = false;
+  for (const h of historiales) {
+    let texto;
+    try {
+      texto = readFileSync(h, 'utf8');
+      leido = true;
+    } catch {
+      continue;
+    }
+    for (const linea of texto.split('\n')) {
+      if (!linea.includes('"tool_use"')) continue;
+      let m;
+      try {
+        m = JSON.parse(linea);
+      } catch {
+        continue;
+      }
+      for (const c of m?.message?.content ?? []) {
+        if (c?.type !== 'tool_use') continue;
+        if (SHELLS.has(c.name)) {
+          const cmd = c.input?.command;
+          if (typeof cmd === 'string' && ESCRIBE.test(cmd)) comandos.push(comparable(cmd));
+          continue;
+        }
+        if (!HERRAMIENTAS_QUE_ESCRIBEN.has(c.name)) continue;
+        const ruta = c.input?.file_path ?? c.input?.notebook_path;
+        if (typeof ruta !== 'string' || ruta === '') continue;
+        const rel = relative(base, resolve(base, ruta));
+        if (rel === '' || rel.startsWith('..') || isAbsolute(rel)) continue; // fuera del repo
+        tocados.add(comparable(rel));
+      }
+    }
+  }
+  //  Llegó un historial y no se pudo leer ninguno: no se sabe qué tocó la sesión, y no se bloquea.
+  if (!leido) return { esPropio: () => false };
+  return { esPropio: (r) => tocados.has(comparable(r)) || comandos.some((c) => c.includes(comparable(r))) };
 }
 
 const RECORDATORIO = `Este proyecto sigue el flujo de Loop (hay un archivo ${MARCADOR} en la raíz).
@@ -401,7 +489,10 @@ async function main() {
   const estado = estadoGit(raiz);
   if (estado === null) return callarse();
 
-  const { rastro, pendientes } = estado;
+  const { rastro } = estado;
+  //  Sólo lo que escribió esta sesión, si se sabe; si no, todo lo pendiente (ver tocadosPorLaSesion).
+  const tocados = tocadosPorLaSesion(entrada.transcript_path, raiz);
+  const pendientes = tocados === null ? estado.pendientes : estado.pendientes.filter((r) => tocados.esPropio(r));
   if (pendientes.length === 0) return callarse(); // no hay trabajo que respaldar
   if (existsSync(join(raiz, rastro))) {
     //  Falla abierto: si existe pero no se puede leer, no es asunto del hook decidir nada.

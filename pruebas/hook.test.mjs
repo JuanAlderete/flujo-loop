@@ -30,12 +30,34 @@ const BASE = join(tmpdir(), 'flujo-loop-hook-test');
 const fallas = [];
 let corridos = 0;
 
-function correr(evento, dir, { sinGit = false } = {}) {
+/**
+ * El historial de la sesión, como lo guarda Claude Code: una línea JSON por mensaje, y cada
+ * escritura es un `tool_use` del asistente con la ruta ABSOLUTA. `toco` son rutas relativas al
+ * repo; `herramientas` dice con qué se escribió cada una (Write por defecto).
+ */
+function historial(dir, toco, herramientas = {}) {
+  const lineas = toco.map((rel) => {
+    const nombre = herramientas[rel] ?? 'Write';
+    const campo = nombre === 'NotebookEdit' ? 'notebook_path' : 'file_path';
+    return JSON.stringify({
+      type: 'assistant',
+      message: { content: [{ type: 'tool_use', name: nombre, input: { [campo]: join(dir, rel) } }] },
+    });
+  });
+  const archivo = join(BASE, `historial-${Math.random().toString(36).slice(2)}.jsonl`);
+  writeFileSync(archivo, [JSON.stringify({ type: 'user', message: { content: 'hola' } }), ...lineas].join('\n') + '\n');
+  return archivo;
+}
+
+function correr(evento, dir, { sinGit = false, toco, herramientas, transcript } = {}) {
   const env = { ...process.env, CLAUDE_PROJECT_DIR: dir };
   if (sinGit) env.PATH = join(BASE, 'vacio');
   if (dir === null) delete env.CLAUDE_PROJECT_DIR;
+  const entrada = { hook_event_name: evento };
+  if (toco) entrada.transcript_path = historial(dir, toco, herramientas);
+  if (transcript) entrada.transcript_path = transcript;
   const r = spawnSync(process.execPath, [HOOK], {
-    input: evento === null ? 'no es json {' : JSON.stringify({ hook_event_name: evento }),
+    input: evento === null ? 'no es json {' : JSON.stringify(entrada),
     cwd: dir || process.cwd(),
     env,
     encoding: 'utf8',
@@ -279,6 +301,148 @@ caso('el marcador solo no cuenta como cambio', () => {
   writeFileSync(join(d, '.flujo-loop'), 'marcador\n');
   const r = correr('Stop', d);
   afirmar(r.code === 0, `agregar el marcador no es trabajo sin rastro, dio ${r.code}`);
+});
+
+// ── Stop: sólo lo que tocó ESTA sesión ────────────────────────────────────────
+//
+//  Decisión del dueño (2026-11-17): "la recomendada, solo lo que tocó la sesión". Antes el Stop
+//  miraba todo lo pendiente del checkout: un snapshot sin commitear de otra sesión trabó a todas
+//  las sesiones de pan-comido-mvp en loop, cada una sin poder hacer nada. Ahora, cuando Claude
+//  Code le pasa el historial (`transcript_path`), sólo cuenta lo que la sesión escribió con
+//  Write, Edit, MultiEdit o NotebookEdit. Sin historial legible, se comporta como antes.
+
+caso('🔑 Stop con cambios de OTRA sesión (que ésta no tocó) NO bloquea', () => {
+  const d = repo('stop-ajeno');
+  writeFileSync(join(d, 'ajeno.txt'), 'lo cambió otro\n');
+  const r = correr('Stop', d, { toco: [] });
+  afirmar(r.code === 0, `un cambio ajeno no puede trabar a esta sesión, dio ${r.code}: ${r.err}`);
+});
+
+caso('🔑 Stop con cambios PROPIOS y sin rastro sigue BLOQUEANDO', () => {
+  const d = repo('stop-propio');
+  writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+  const r = correr('Stop', d, { toco: ['fuente.txt'] });
+  afirmar(r.code === 2, `lo propio sin rastro tiene que bloquear, dio ${r.code}`);
+});
+
+caso('🔑 Stop con propios y ajenos: bloquea y nombra sólo los propios', () => {
+  const d = repo('stop-mezcla');
+  writeFileSync(join(d, 'fuente.txt'), 'mío\n');
+  writeFileSync(join(d, 'ajeno.txt'), 'de otro\n');
+  const r = correr('Stop', d, { toco: ['fuente.txt'] });
+  const texto = r.err + r.out;
+  afirmar(r.code === 2, `esperaba 2 y dio ${r.code}`);
+  afirmar(texto.includes('fuente.txt'), `no nombra el archivo propio: ${texto}`);
+  afirmar(!texto.includes('ajeno.txt'), `nombra un archivo que esta sesión no tocó: ${texto}`);
+});
+
+//  Revisión independiente (2026-11-17): para una carpeta que git no conoce, `git status` devuelve
+//  sólo `?? src/`, y el historial trae `src/nuevo/a.ts`: no coincidían y el Stop dejaba pasar
+//  justo el caso común de una feature nueva.
+caso('🔑 Stop reconoce un archivo propio dentro de una carpeta nueva', () => {
+  const d = repo('stop-carpeta-nueva');
+  mkdirSync(join(d, 'src', 'nuevo'), { recursive: true });
+  writeFileSync(join(d, 'src', 'nuevo', 'a.ts'), 'export const a = 1;\n');
+  const r = correr('Stop', d, { toco: [join('src', 'nuevo', 'a.ts')] });
+  afirmar(r.code === 2, `un archivo propio en una carpeta nueva tiene que bloquear, dio ${r.code}`);
+});
+
+//  Y git escribe un nombre con tilde o ñ con escapes (`"a\303\261adir.ts"`); el historial, normal.
+caso('🔑 Stop reconoce un archivo propio con tilde o ñ en el nombre', () => {
+  const d = repo('stop-con-enie');
+  writeFileSync(join(d, 'añadir.ts'), 'export const b = 2;\n');
+  const r = correr('Stop', d, { toco: ['añadir.ts'] });
+  afirmar(r.code === 2, `un archivo propio con ñ tiene que bloquear, dio ${r.code}`);
+});
+
+caso('Stop reconoce Edit, MultiEdit y NotebookEdit, no sólo Write', () => {
+  for (const herramienta of ['Edit', 'MultiEdit', 'NotebookEdit']) {
+    const d = repo(`stop-${herramienta}`);
+    writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+    const r = correr('Stop', d, { toco: ['fuente.txt'], herramientas: { 'fuente.txt': herramienta } });
+    afirmar(r.code === 2, `con ${herramienta} tiene que bloquear, dio ${r.code}`);
+  }
+});
+
+caso('Stop reconoce la ruta del historial aunque cambien mayúsculas o barras (Windows)', () => {
+  const d = repo('stop-ruta');
+  writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+  const t = join(BASE, 'historial-ruta.jsonl');
+  const ruta = join(d, 'fuente.txt').replace(/\\/g, '/');
+  const rara = process.platform === 'win32' ? ruta.replace(/^([a-z]):/i, (m) => m.toLowerCase()).replace(/\//g, '\\') : ruta;
+  writeFileSync(t, JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Write', input: { file_path: rara } }] } }) + '\n');
+  const r = correr('Stop', d, { transcript: t });
+  afirmar(r.code === 2, `no reconoció la ruta escrita de otra forma, dio ${r.code}`);
+});
+
+//  Revisión independiente (2026-11-17): con un historial que llega pero no se puede leer, volver a
+//  mirar todo reabría el loop entre sesiones. La regla del hook es callarse ante lo que no sabe.
+caso('🔑 Stop con un historial que llega pero no se puede leer FALLA ABIERTO', () => {
+  const d = repo('stop-historial-roto');
+  writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+  const r = correr('Stop', d, { transcript: join(BASE, 'no-existe.jsonl') });
+  afirmar(r.code === 0, `un historial ilegible no puede bloquear, dio ${r.code}`);
+});
+
+caso('Stop sin historial (otro cliente) mira todo, como antes', () => {
+  const d = repo('stop-sin-historial');
+  writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+  const r = correr('Stop', d);
+  afirmar(r.code === 2, `sin transcript_path tiene que mirar todo, dio ${r.code}`);
+});
+
+/** Un historial con un comando de shell (Bash o PowerShell) en vez de una escritura con herramienta. */
+function historialConComando(comando, herramienta = 'Bash') {
+  const archivo = join(BASE, `historial-${Math.random().toString(36).slice(2)}.jsonl`);
+  writeFileSync(archivo, JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: herramienta, input: { command: comando } }] } }) + '\n');
+  return archivo;
+}
+
+//  Revisión independiente (2026-11-17): en este equipo se escribe mucho por shell (heredocs,
+//  `sed -i`, `node -e`), y el modo auto de Claude Code lo sugiere. Un archivo pendiente que nombra
+//  un comando que ESCRIBE cuenta como de la sesión.
+caso('🔑 Stop cuenta como propio un archivo escrito por un heredoc de Bash', () => {
+  const d = repo('stop-heredoc');
+  writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+  const r = correr('Stop', d, { transcript: historialConComando(`cat > fuente.txt <<'EOF'\ncambio\nEOF`) });
+  afirmar(r.code === 2, `lo escrito por shell tiene que bloquear, dio ${r.code}`);
+});
+
+caso('🔑 Stop cuenta como propio un archivo escrito por PowerShell (Set-Content)', () => {
+  const d = repo('stop-powershell');
+  writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+  const r = correr('Stop', d, { transcript: historialConComando(`Set-Content -Path fuente.txt -Value cambio`, 'PowerShell') });
+  afirmar(r.code === 2, `lo escrito por PowerShell tiene que bloquear, dio ${r.code}`);
+});
+
+caso('Stop NO cuenta un archivo que un comando sólo LEE', () => {
+  const d = repo('stop-solo-lee');
+  writeFileSync(join(d, 'ajeno.txt'), 'de otro\n');
+  const r = correr('Stop', d, { transcript: historialConComando(`cat ajeno.txt && git diff ajeno.txt`) });
+  afirmar(r.code === 0, `leer un archivo ajeno no lo hace propio, dio ${r.code}`);
+});
+
+//  Y los subagentes escriben en su propio historial, al lado del de la sesión:
+//  <carpeta>/<id de la sesión>/subagents/agent-*.jsonl. 82 de 112 subagentes del proyecto escribieron.
+caso('🔑 Stop cuenta como propio lo que escribió un subagente de la sesión', () => {
+  const d = repo('stop-subagente');
+  writeFileSync(join(d, 'fuente.txt'), 'cambio\n');
+  const t = historial(d, []);
+  const sesion = t.replace(/\.jsonl$/, '');
+  mkdirSync(join(sesion, 'subagents'), { recursive: true });
+  writeFileSync(join(sesion, 'subagents', 'agent-x.jsonl'),
+    JSON.stringify({ type: 'assistant', message: { content: [{ type: 'tool_use', name: 'Edit', input: { file_path: join(d, 'fuente.txt') } }] } }) + '\n');
+  const r = correr('Stop', d, { transcript: t });
+  afirmar(r.code === 2, `lo que escribió un subagente tiene que bloquear, dio ${r.code}`);
+});
+
+caso('Stop: una sesión que sólo escribió su rastro completo no bloquea por lo ajeno', () => {
+  const d = repo('stop-solo-rastro');
+  writeFileSync(join(d, 'ajeno.txt'), 'de otro\n');
+  mkdirSync(join(d, 'flujo'), { recursive: true });
+  writeFileSync(join(d, 'flujo', 'trabajo.md'), RASTRO_COMPLETO);
+  const r = correr('Stop', d, { toco: [join('flujo', 'trabajo.md')] });
+  afirmar(r.code === 0, `esperaba 0 y dio ${r.code}: ${r.err}`);
 });
 
 // ── PreToolUse: el guardrail de git ───────────────────────────────────────────
