@@ -163,11 +163,117 @@ const HERRAMIENTAS_QUE_ESCRIBEN = new Set(['Write', 'Edit', 'MultiEdit', 'Notebo
 const SHELLS = new Set(['Bash', 'PowerShell']);
 
 /**
- * Un comando de shell que ESCRIBE archivos: redirección, `tee`, `sed -i`, copiar o mover, aplicar
- * un parche, restaurar de otra rama, o escribir desde node o PowerShell. Se equivoca de más (un
- * `2>&1` cuenta como escritura), nunca de menos con lo que nombra: es el lado seguro.
+ * Un comando de shell que ESCRIBE archivos: redirección, `tee`, `sed -i`, `perl -pi`, copiar o
+ * mover, aplicar un parche, restaurar de otra rama, un formateador con `--write` o `--fix`, o
+ * escribir desde node, python, PowerShell o .NET. Ante la duda cuenta como escritura: es el lado
+ * seguro. Se mira sin las redirecciones que no escriben archivos (ver INOFENSIVAS).
  */
-const ESCRIBE = /(^|[^<>-])>>?|\btee\b|\bsed\s+-i|\b(cp|mv|install|touch|patch)\b|\bgit\s+(apply|am|restore|checkout\b[^\n]*\s--\s)|writeFileSync|appendFileSync|Set-Content|Add-Content|Out-File|New-Item|Copy-Item|Move-Item/i;
+const ESCRIBE = /(^|[^<>-])>>?|\btee\b|\bsed\s+-i|\b(perl|ruby)\s+-\w*i|\bawk\s+-i\s+inplace|\b(cp|mv|rm|install|touch|patch)\b|\bgit\s+(?:-C\s+\S+\s+)?(apply|am|restore|checkout\b[^\n]*\s--\s)|--write\b|--fix\b|writeFileSync|appendFileSync|open\([^)]*,\s*(mode\s*=\s*)?['"][wa]|\.write_text\(|WriteAll(Text|Lines|Bytes)|Set-Content|Add-Content|Out-File|New-Item|Copy-Item|Move-Item|Remove-Item/i;
+
+/**
+ * Lo que parece una escritura y no escribe ningún archivo (flujo-loop #15): `2>&1`, `2>/dev/null`,
+ * `> $null` y las flechas `=>` / `->`. Sin sacarlas, `git diff ajeno.txt 2>&1` hacía propio a un
+ * archivo ajeno que sólo se leía.
+ */
+const INOFENSIVAS = /\d*>&\d+|\d*>\s*\/dev\/null\b|\d*>\s*\$null\b|[=-]>/gi;
+
+/** Escapa un texto para usarlo literal en una expresión regular. */
+const literal = (t) => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+/** Cambiar de carpeta en bash o PowerShell: `cd`, `pushd`, `Set-Location`/`sl`, `chdir`. */
+const CAMBIA_CARPETA = /^(?:cd|pushd|chdir|set-location|sl)\s+(?:"([^"]+)"|'([^']+)'|([^\s;&|]+))/i;
+
+/**
+ * Un nombre como palabra entera, con los bordes que aparecen en un comando: espacio, comillas
+ * (también el backtick), `=`, `(`, `:`, `/`, `>` (una redirección pegada: `echo x >a.ts`), `,`,
+ * `;`, `&`, `[`. Así `a.ts` no está en `data.ts`. Se compila una vez por nombre.
+ */
+const comoPalabra = new Map();
+function palabra(f) {
+  if (!comoPalabra.has(f)) {
+    comoPalabra.set(f, new RegExp(`(^|[\\s'"\`=(:/>,;&\\[])${literal(f)}($|[\\s'"\`;|&)>,:\\]])`));
+  }
+  return comoPalabra.get(f);
+}
+
+/**
+ * ¿El comando ESCRIBE el archivo `r` (ruta comparable, relativa al repo)? Se lee tramo por tramo
+ * (separados por `&&`, `||`, `;`, `|` o un salto de línea) siguiendo la carpeta actual: cada
+ * `cd`/`pushd`/`Set-Location` la mueve desde la anterior, y un nombre cuenta sólo en un tramo que
+ * escribe, tal cual o relativo a esa carpeta. Así `cd src; sed -i … a.ts` escribe `src/a.ts`, y en
+ * `cd src && git diff a.ts && cd .. && echo > b.ts` el `a.ts` sólo se leyó (flujo-loop #15).
+ * `base` es la raíz del repo, para un cd absoluto.
+ */
+/**
+ * Los tramos de un comando: corta por `&&`, `||`, `;`, `|` y salto de línea, pero NO dentro de
+ * comillas (simples, dobles o backtick). Cortando adentro, `sed -i 's/a/b/;s/c/d/' a.ts` perdía el
+ * nombre del archivo (revisión del segundo arreglo, 2026-11-17).
+ */
+function tramosDelTexto(cmd) {
+  const salida = [];
+  let actual = '';
+  let comilla = null;
+  for (let i = 0; i < cmd.length; i++) {
+    const ch = cmd[i];
+    if (comilla) {
+      if (ch === comilla) comilla = null;
+      actual += ch;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      comilla = ch;
+      actual += ch;
+      continue;
+    }
+    const dos = cmd.slice(i, i + 2);
+    if (dos === '&&' || dos === '||') {
+      salida.push(actual);
+      actual = '';
+      i++;
+      continue;
+    }
+    if (ch === ';' || ch === '|' || ch === '\n') {
+      salida.push(actual);
+      actual = '';
+      continue;
+    }
+    actual += ch;
+  }
+  //  Una comilla que nunca cierra es un apóstrofo suelto (`it's`, en prosa o en un heredoc), no una
+  //  comilla de verdad: se vuelve a cortar sin tenerlas en cuenta, para no dejar ciego al resto.
+  if (comilla) return cmd.split(/&&|\|\||[;|\n]/);
+  salida.push(actual);
+  return salida;
+}
+
+/** `git -C <carpeta>` en un tramo: la carpeta desde la que git nombra los archivos. */
+//  Con `i`: en Windows el comando llega en minúsculas (ver `comparable`), y `-C` es `-c`.
+const GIT_C = /\bgit\s+-C\s+(?:"([^"]+)"|'([^']+)'|(\S+))/i;
+
+function nombra(cmd, r, base) {
+  let actual = base;
+  for (const tramo of tramosDelTexto(cmd)) {
+    //  Un subshell `(cd src && …)` o un bloque `{ …; }`: lo de adentro se lee igual.
+    const t = tramo.trim().replace(/^[({]\s*/, '').replace(/\s*[)}]$/, '');
+    const cd = CAMBIA_CARPETA.exec(t);
+    if (cd) {
+      const destino = cd[1] ?? cd[2] ?? cd[3];
+      if (destino !== '-') actual = resolve(actual, destino);
+      continue;
+    }
+    if (!ESCRIBE.test(t.replace(INOFENSIVAS, ' '))) continue;
+    const carpetas = [actual];
+    const gitC = GIT_C.exec(t);
+    if (gitC) carpetas.push(resolve(actual, gitC[1] ?? gitC[2] ?? gitC[3]));
+    const formas = [r];
+    for (const c of carpetas) {
+      const dir = comparable(relative(base, c));
+      if (dir !== '' && !dir.startsWith('..') && r.startsWith(`${dir}/`)) formas.push(r.slice(dir.length + 1));
+    }
+    if (formas.some((f) => palabra(f).test(t))) return true;
+  }
+  return false;
+}
 
 /**
  * Lo que ESTA sesión escribió en el repo, sacado del historial que Claude Code le pasa al hook
@@ -219,7 +325,7 @@ function tocadosPorLaSesion(transcriptPath, raiz) {
         if (c?.type !== 'tool_use') continue;
         if (SHELLS.has(c.name)) {
           const cmd = c.input?.command;
-          if (typeof cmd === 'string' && ESCRIBE.test(cmd)) comandos.push(comparable(cmd));
+          if (typeof cmd === 'string' && ESCRIBE.test(cmd.replace(INOFENSIVAS, ' '))) comandos.push(comparable(cmd));
           continue;
         }
         if (!HERRAMIENTAS_QUE_ESCRIBEN.has(c.name)) continue;
@@ -233,7 +339,7 @@ function tocadosPorLaSesion(transcriptPath, raiz) {
   }
   //  Llegó un historial y no se pudo leer ninguno: no se sabe qué tocó la sesión, y no se bloquea.
   if (!leido) return { esPropio: () => false };
-  return { esPropio: (r) => tocados.has(comparable(r)) || comandos.some((c) => c.includes(comparable(r))) };
+  return { esPropio: (r) => tocados.has(comparable(r)) || comandos.some((c) => nombra(c, comparable(r), base)) };
 }
 
 const RECORDATORIO = `Este proyecto sigue el flujo de Loop (hay un archivo ${MARCADOR} en la raíz).
