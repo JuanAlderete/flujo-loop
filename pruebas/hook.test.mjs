@@ -422,6 +422,112 @@ caso('Stop NO cuenta un archivo que un comando sólo LEE', () => {
   afirmar(r.code === 0, `leer un archivo ajeno no lo hace propio, dio ${r.code}`);
 });
 
+// ── Segundo arreglo (flujo-loop #15) ──────────────────────────────────────────
+
+//  Una ruta relativa después de un `cd`: el comando dice `a.ts`, el archivo es `src/a.ts`.
+caso('🔑 Stop cuenta como propio un archivo escrito con ruta relativa después de un cd', () => {
+  const d = repo('stop-cd');
+  mkdirSync(join(d, 'src'), { recursive: true });
+  writeFileSync(join(d, 'src', 'a.ts'), 'cambio\n');
+  git(d, 'add', '-A'); git(d, 'commit', '-q', '-m', 'a');
+  writeFileSync(join(d, 'src', 'a.ts'), 'cambio 2\n');
+  const r = correr('Stop', d, { transcript: historialConComando(`cd src && sed -i s/cambio/otro/ a.ts`) });
+  afirmar(r.code === 2, `lo escrito tras un cd tiene que bloquear, dio ${r.code}`);
+});
+
+caso('Stop cuenta un cd a una ruta absoluta dentro del repo', () => {
+  const d = repo('stop-cd-absoluto');
+  mkdirSync(join(d, 'src'), { recursive: true });
+  writeFileSync(join(d, 'src', 'a.ts'), 'cambio\n');
+  const r = correr('Stop', d, { transcript: historialConComando(`cd "${join(d, 'src')}" && cat > a.ts <<'EOF'\ncambio\nEOF`) });
+  afirmar(r.code === 2, `un cd absoluto dentro del repo tiene que contar, dio ${r.code}`);
+});
+
+/** ¿El Stop toma como propio `rel` (pendiente) después de este comando? Arma el repo y lo corre. */
+function propioPorComando(nombre, rel, cmd, shell = 'Bash') {
+  const d = repo(nombre);
+  mkdirSync(dirname(join(d, rel)), { recursive: true });
+  writeFileSync(join(d, rel), 'cambio\n');
+  return correr('Stop', d, { transcript: historialConComando(cmd, shell) }).code === 2;
+}
+
+//  Revisión del segundo arreglo: al comparar por palabra entera, una redirección pegada a la ruta
+//  dejó de contar (`echo hi >src/a.ts`). Antes, con `includes`, sí contaba.
+caso('🔑 Stop cuenta una redirección pegada a la ruta (>a, 1>, &>, 2>)', () => {
+  for (const [cmd, rel] of [['echo hi >src/a.ts', 'src/a.ts'], ['echo hi>src/a.ts', 'src/a.ts'],
+    ['cat a 1>out.txt', 'out.txt'], ['cmd &>out.txt', 'out.txt'], ['cmd 2>err.log', 'err.log']]) {
+    afirmar(propioPorComando(`stop-pegada-${cmd.length}`, rel, cmd), `"${cmd}" escribe ${rel} y no bloqueó`);
+  }
+});
+
+//  `cd src;` y `cd src&&` (la forma habitual de PowerShell), y `cd` encadenados.
+caso('🔑 Stop sigue los cd con ; o && pegados, encadenados, cd .., pushd y Set-Location', () => {
+  for (const [cmd, rel, shell] of [
+    ['cd src; sed -i x a.ts', 'src/a.ts'],
+    ['cd src&& sed -i x a.ts', 'src/a.ts'],
+    ['cd src; cd lib && sed -i x b.ts', 'src/lib/b.ts'],
+    ['cd src/lib; cd .. && sed -i x a.ts', 'src/a.ts'],
+    ['pushd src && sed -i x a.ts', 'src/a.ts'],
+    ['Set-Location src; Set-Content a.ts x', 'src/a.ts', 'PowerShell'],
+  ]) {
+    afirmar(propioPorComando(`stop-cd-${cmd.length}`, rel, cmd, shell), `"${cmd}" escribe ${rel} y no bloqueó`);
+  }
+});
+
+//  El cd vale para lo que viene DESPUÉS, y sólo cuentan los tramos que escriben.
+caso('🔑 Stop: un archivo que sólo se LEE en otro tramo del comando no se hace propio', () => {
+  afirmar(!propioPorComando('stop-tramo', 'src/a.ts', 'cd src && git diff a.ts && cd .. && echo > b.ts'),
+    'src/a.ts sólo se leyó y se tomó como propio');
+});
+
+caso('Stop acepta backtick, coma y :línea como bordes del nombre', () => {
+  for (const [cmd, rel] of [["node -e \"fs.writeFileSync(`src/a.ts`,'x')\"", 'src/a.ts'],
+    ['npx prettier --write src/a.ts,src/b.ts', 'src/b.ts']]) {
+    afirmar(propioPorComando(`stop-borde-${cmd.length}`, rel, cmd), `"${cmd}" escribe ${rel} y no bloqueó`);
+  }
+});
+
+caso('Stop detecta ruby -pi, awk -i inplace, open(mode=w) y rm', () => {
+  for (const cmd of [`ruby -pi -e 'x' fuente.ts`, 'awk -i inplace 1 fuente.ts', `python -c "open('fuente.ts', mode='w')"`, 'rm fuente.ts']) {
+    afirmar(propioPorComando(`stop-mas-${cmd.length}`, 'fuente.ts', cmd), `"${cmd}" toca fuente.ts y no bloqueó`);
+  }
+});
+
+//  Redirecciones que no escriben archivos: no hacen propio a un archivo ajeno que sólo se lee.
+caso('🔑 Stop NO cuenta como escritura un 2>&1, un 2>/dev/null ni un =>', () => {
+  for (const cmd of ['git diff ajeno.txt 2>&1 | head', 'cat ajeno.txt 2>/dev/null', `node -e "[1].map(x => x)" ajeno.txt`]) {
+    const d = repo(`stop-no-escribe-${cmd.length}`);
+    writeFileSync(join(d, 'ajeno.txt'), 'de otro\n');
+    const r = correr('Stop', d, { transcript: historialConComando(cmd) });
+    afirmar(r.code === 0, `"${cmd}" no escribe ajeno.txt y bloqueó (${r.code})`);
+  }
+});
+
+//  Un nombre no coincide como pedazo de otro: escribir data.ts no hace propio a a.ts.
+caso('🔑 Stop: escribir data.ts no hace propio a un a.ts ajeno', () => {
+  const d = repo('stop-pedazo');
+  writeFileSync(join(d, 'a.ts'), 'de otro\n');
+  const r = correr('Stop', d, { transcript: historialConComando(`cat > data.ts <<'EOF'\nx\nEOF`) });
+  afirmar(r.code === 0, `a.ts no es data.ts y bloqueó (${r.code})`);
+});
+
+//  Escrituras comunes que no se detectaban: formateadores, perl, python y .NET.
+caso('🔑 Stop detecta --write, --fix, perl -pi, python open(w) y WriteAllText', () => {
+  const comandos = [
+    ['npx prettier --write fuente.ts', 'Bash'],
+    ['npx eslint --fix fuente.ts', 'Bash'],
+    [`perl -pi -e 's/a/b/' fuente.ts`, 'Bash'],
+    [`python - <<'EOF'\nopen('fuente.ts','w').write('x')\nEOF`, 'Bash'],
+    [`[IO.File]::WriteAllText('fuente.ts', 'x')`, 'PowerShell'],
+  ];
+  for (const [cmd, shell] of comandos) {
+    const d = repo(`stop-escribe-${comandos.findIndex((c) => c[0] === cmd)}`);
+    writeFileSync(join(d, 'fuente.ts'), 'cambio\n');
+    const r = correr('Stop', d, { transcript: historialConComando(cmd, shell) });
+    afirmar(r.code === 2, `"${cmd.split('\n')[0]}" escribe fuente.ts y no bloqueó (${r.code})`);
+  }
+});
+
 //  Y los subagentes escriben en su propio historial, al lado del de la sesión:
 //  <carpeta>/<id de la sesión>/subagents/agent-*.jsonl. 82 de 112 subagentes del proyecto escribieron.
 caso('🔑 Stop cuenta como propio lo que escribió un subagente de la sesión', () => {
