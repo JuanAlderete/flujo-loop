@@ -15,17 +15,19 @@ comandos de shell.
 - Más escrituras: `--write`, `--fix`, `perl -pi`, `ruby -pi`, `awk -i inplace`, `python open(…,'w')`,
   `WriteAllText`, `rm`.
 
-**Hallazgos de la revisión independiente** (un revisor, dos vueltas, el tope):
-1. **Debe, no se pudo resolver — regresión de este arreglo.** El comando se corta en tramos por `;` y
-   `|` también DENTRO de comillas, y se pierde el nombre: `sed -i 's/a/b/;s/c/d/' src/a.ts`,
-   `perl -pi -e 's/a/b/; s/c/d/' src/a.ts`, `sed -i 's/a|b/c/' src/a.ts` y
-   `sed -i -E 's/(x|y)/z/g' src/a.ts` dan "no propio". Antes de este arreglo sí contaban.
-   Arreglo propuesto: no cortar dentro de comillas.
-2. **Conviene:** un `cd` dentro de un subshell (`(cd src && sed -i x a.ts)`) y `git -C src apply`.
-3. **Opcional:** un espacio escapado en el nombre (`src/my\ file.ts`), `prettier -w`, `cmd=>out.txt`.
+**Hallazgos de la revisión independiente** (un revisor, dos vueltas, más una tercera pasada que
+autorizó el dueño: "sí, hacé la tercera pasada con el 1 y el 2"):
+1. **Resuelto en la tercera pasada.** El corte en tramos ya no corta dentro de comillas: los `sed`
+   y `perl` de varias expresiones vuelven a contar. Y un apóstrofo suelto (`it's`) que dejaba la
+   comilla abierta ya no deja ciego al resto: se vuelve a cortar sin comillas.
+2. **Resuelto en la tercera pasada:** `(cd src && …)` y `git -C src restore|checkout|apply`.
+3. **Opcional, abierto:** un espacio escapado en el nombre (`src/my\ file.ts`), `prettier -w`,
+   `cmd=>out.txt`, `git -C "carpeta con espacios"`, y el `cd` de un subshell que sigue valiendo
+   después de cerrarlo (frena de más). Rendimiento: 3000 comandos × 300 pendientes en ~3 s.
 4. **Límite declarado:** `git stash pop` no nombra archivos; no se puede atribuir a la sesión.
 
-**Veredicto.** No publicar así: el hallazgo 1 empeora un caso común respecto del PR #16. Lo decide el dueño.
+**Veredicto.** Listo para publicar: mejora sobre el PR #16 sin la regresión de las comillas; lo
+abierto frena de más o es raro.
 
 ## Decisiones
 
@@ -50,11 +52,21 @@ comandos de shell.
      La primera versión de esta mutación rompía la sintaxis (`FALLA 59 de 61`, todo con exit 1): no
      cuenta como prueba y se repitió bien escrita;
    - `cd` resuelto contra la raíz y no contra el anterior → `FALLA  1 de 61` (los encadenados).
-3. **Controles:** `check.mjs` `OK  198 chequeos, sin fallas.` · `--self-test` `OK  40 casos del verificador, sin fallas.` ·
-   `hook.test.mjs` `OK  138 casos, sin fallas.` (128 antes) · `instalar.test.mjs` `OK  17 casos, sin fallas.`
+3. **Controles (tras la tercera pasada):** `check.mjs` `OK  198 chequeos, sin fallas.` ·
+   `--self-test` `OK  40 casos del verificador, sin fallas.` · `hook.test.mjs` `OK  141 casos, sin fallas.`
+   (128 en el PR #16) · `instalar.test.mjs` `OK  17 casos, sin fallas.`
+
+**Tercera pasada.** RED: `FALLA  2 de 63 casos` (`"sed -i 's/a/b/;s/c/d/' src/a.ts" escribe src/a.ts y no bloqueó`;
+`"(cd src && sed -i x a.ts)" … no bloqueó`); después, el apóstrofo: `FALLA  1 de 1 casos`
+(`"echo it's ok; cd src && sed -i x b.ts…" escribe src/b.ts y no bloqueó`). Mutaciones válidas
+(compilan), aplicadas y restauradas: sin respetar comillas → `FALLA  1 de 63`; sin limpiar
+paréntesis → `FALLA  1 de 63`; sin `git -C` → `FALLA  1 de 63`; sin el plan B del apóstrofo →
+`FALLA  1 de 64`. Tropiezos: la función nueva se llamaba igual que una del guardrail (`tramos`) y
+el hook no cargaba (todo exit 1): se renombró a `tramosDelTexto`; y `git -C` no se reconocía en
+Windows porque el comando llega en minúsculas: la expresión pasó a ignorar mayúsculas.
 
 ## Lo que no se pudo verificar
 
-- Los hallazgos 1 a 4 de arriba.
+- Los opcionales del hallazgo 3 y el límite del 4.
 - El hook en Linux/macOS: probado sólo en Windows (Git Bash).
 - No se copió a `loop-skills` (la copia activa): queda el primer arreglo.

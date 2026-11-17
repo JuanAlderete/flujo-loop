@@ -474,6 +474,29 @@ caso('🔑 Stop sigue los cd con ; o && pegados, encadenados, cd .., pushd y Set
   }
 });
 
+//  Tercera pasada (dueño, 2026-11-17): cortar por `;` y `|` DENTRO de comillas perdía el nombre en
+//  los sed y perl de varias expresiones, que con el primer arreglo sí contaban.
+caso('🔑 Stop no corta dentro de comillas: sed y perl de varias expresiones', () => {
+  for (const cmd of [`sed -i 's/a/b/;s/c/d/' src/a.ts`, `perl -pi -e 's/a/b/; s/c/d/' src/a.ts`,
+    `sed -i 's/a|b/c/' src/a.ts`, `sed -i -E 's/(x|y)/z/g' src/a.ts`]) {
+    afirmar(propioPorComando(`stop-comillas-${cmd.length}`, 'src/a.ts', cmd), `"${cmd}" escribe src/a.ts y no bloqueó`);
+  }
+});
+
+//  Pero un apóstrofo suelto (`it's`) abre una comilla que nunca cierra: no puede dejar ciego al resto.
+caso('🔑 Stop: un apóstrofo suelto no se traga el resto del comando', () => {
+  for (const cmd of [`echo it's ok; cd src && sed -i x b.ts`, `cat > notas.md <<'EOF'\nit's done\nEOF\ncd src && sed -i x b.ts`]) {
+    afirmar(propioPorComando(`stop-apostrofo-${cmd.length}`, 'src/b.ts', cmd), `"${cmd.split('\n')[0]}…" escribe src/b.ts y no bloqueó`);
+  }
+});
+
+//  Un cd dentro de un subshell, y git -C <carpeta>.
+caso('🔑 Stop sigue un cd dentro de un subshell y git -C', () => {
+  for (const cmd of ['(cd src && sed -i x a.ts)', 'git -C src restore a.ts']) {
+    afirmar(propioPorComando(`stop-subshell-${cmd.length}`, 'src/a.ts', cmd), `"${cmd}" escribe src/a.ts y no bloqueó`);
+  }
+});
+
 //  El cd vale para lo que viene DESPUÉS, y sólo cuentan los tramos que escriben.
 caso('🔑 Stop: un archivo que sólo se LEE en otro tramo del comando no se hace propio', () => {
   afirmar(!propioPorComando('stop-tramo', 'src/a.ts', 'cd src && git diff a.ts && cd .. && echo > b.ts'),

@@ -168,7 +168,7 @@ const SHELLS = new Set(['Bash', 'PowerShell']);
  * escribir desde node, python, PowerShell o .NET. Ante la duda cuenta como escritura: es el lado
  * seguro. Se mira sin las redirecciones que no escriben archivos (ver INOFENSIVAS).
  */
-const ESCRIBE = /(^|[^<>-])>>?|\btee\b|\bsed\s+-i|\b(perl|ruby)\s+-\w*i|\bawk\s+-i\s+inplace|\b(cp|mv|rm|install|touch|patch)\b|\bgit\s+(apply|am|restore|checkout\b[^\n]*\s--\s)|--write\b|--fix\b|writeFileSync|appendFileSync|open\([^)]*,\s*(mode\s*=\s*)?['"][wa]|\.write_text\(|WriteAll(Text|Lines|Bytes)|Set-Content|Add-Content|Out-File|New-Item|Copy-Item|Move-Item|Remove-Item/i;
+const ESCRIBE = /(^|[^<>-])>>?|\btee\b|\bsed\s+-i|\b(perl|ruby)\s+-\w*i|\bawk\s+-i\s+inplace|\b(cp|mv|rm|install|touch|patch)\b|\bgit\s+(?:-C\s+\S+\s+)?(apply|am|restore|checkout\b[^\n]*\s--\s)|--write\b|--fix\b|writeFileSync|appendFileSync|open\([^)]*,\s*(mode\s*=\s*)?['"][wa]|\.write_text\(|WriteAll(Text|Lines|Bytes)|Set-Content|Add-Content|Out-File|New-Item|Copy-Item|Move-Item|Remove-Item/i;
 
 /**
  * Lo que parece una escritura y no escribe ningún archivo (flujo-loop #15): `2>&1`, `2>/dev/null`,
@@ -204,10 +204,57 @@ function palabra(f) {
  * `cd src && git diff a.ts && cd .. && echo > b.ts` el `a.ts` sólo se leyó (flujo-loop #15).
  * `base` es la raíz del repo, para un cd absoluto.
  */
+/**
+ * Los tramos de un comando: corta por `&&`, `||`, `;`, `|` y salto de línea, pero NO dentro de
+ * comillas (simples, dobles o backtick). Cortando adentro, `sed -i 's/a/b/;s/c/d/' a.ts` perdía el
+ * nombre del archivo (revisión del segundo arreglo, 2026-11-17).
+ */
+function tramosDelTexto(cmd) {
+  const salida = [];
+  let actual = '';
+  let comilla = null;
+  for (let i = 0; i < cmd.length; i++) {
+    const ch = cmd[i];
+    if (comilla) {
+      if (ch === comilla) comilla = null;
+      actual += ch;
+      continue;
+    }
+    if (ch === "'" || ch === '"' || ch === '`') {
+      comilla = ch;
+      actual += ch;
+      continue;
+    }
+    const dos = cmd.slice(i, i + 2);
+    if (dos === '&&' || dos === '||') {
+      salida.push(actual);
+      actual = '';
+      i++;
+      continue;
+    }
+    if (ch === ';' || ch === '|' || ch === '\n') {
+      salida.push(actual);
+      actual = '';
+      continue;
+    }
+    actual += ch;
+  }
+  //  Una comilla que nunca cierra es un apóstrofo suelto (`it's`, en prosa o en un heredoc), no una
+  //  comilla de verdad: se vuelve a cortar sin tenerlas en cuenta, para no dejar ciego al resto.
+  if (comilla) return cmd.split(/&&|\|\||[;|\n]/);
+  salida.push(actual);
+  return salida;
+}
+
+/** `git -C <carpeta>` en un tramo: la carpeta desde la que git nombra los archivos. */
+//  Con `i`: en Windows el comando llega en minúsculas (ver `comparable`), y `-C` es `-c`.
+const GIT_C = /\bgit\s+-C\s+(?:"([^"]+)"|'([^']+)'|(\S+))/i;
+
 function nombra(cmd, r, base) {
   let actual = base;
-  for (const tramo of cmd.split(/&&|\|\||[;|\n]/)) {
-    const t = tramo.trim();
+  for (const tramo of tramosDelTexto(cmd)) {
+    //  Un subshell `(cd src && …)` o un bloque `{ …; }`: lo de adentro se lee igual.
+    const t = tramo.trim().replace(/^[({]\s*/, '').replace(/\s*[)}]$/, '');
     const cd = CAMBIA_CARPETA.exec(t);
     if (cd) {
       const destino = cd[1] ?? cd[2] ?? cd[3];
@@ -215,9 +262,14 @@ function nombra(cmd, r, base) {
       continue;
     }
     if (!ESCRIBE.test(t.replace(INOFENSIVAS, ' '))) continue;
+    const carpetas = [actual];
+    const gitC = GIT_C.exec(t);
+    if (gitC) carpetas.push(resolve(actual, gitC[1] ?? gitC[2] ?? gitC[3]));
     const formas = [r];
-    const dir = comparable(relative(base, actual));
-    if (dir !== '' && !dir.startsWith('..') && r.startsWith(`${dir}/`)) formas.push(r.slice(dir.length + 1));
+    for (const c of carpetas) {
+      const dir = comparable(relative(base, c));
+      if (dir !== '' && !dir.startsWith('..') && r.startsWith(`${dir}/`)) formas.push(r.slice(dir.length + 1));
+    }
     if (formas.some((f) => palabra(f).test(t))) return true;
   }
   return false;
